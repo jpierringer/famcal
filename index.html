@@ -226,15 +226,133 @@ main{padding:4px 16px 20px}
 .slap{animation:slap .45s cubic-bezier(.2,.9,.3,1.3)}
 @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .shake{animation:shake .25s 2}
+
+/* ================= Larger screens ================= */
+.side,.desk{display:none}
+@media (hover:hover){
+  .card[data-open],.row[data-open],.pin,.sbrow{cursor:pointer;transition:box-shadow .15s,transform .15s}
+  .card[data-open]:hover,.row[data-open]:hover{box-shadow:0 2px 4px rgba(40,30,10,.08),0 10px 26px rgba(40,30,10,.10);transform:translateY(-1px)}
+}
+
+/* Tablet: center the phone layout */
+@media (min-width:600px) and (max-width:899px){
+  .top,main{max-width:720px;margin-left:auto;margin-right:auto}
+  .tabs{left:50%;right:auto;transform:translateX(-50%);width:min(520px,100%);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0}
+  .sheet{max-width:620px;margin:0 auto}
+  .chead,.cbody{width:100%;max-width:660px;margin:0 auto}
+  .lists-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px;align-items:start}
+}
+
+/* Desktop: sidebar + week view */
+@media (min-width:900px){
+  body{padding:0 0 0 300px}
+  .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:300px;overflow:auto;padding:22px 18px 28px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--card) 55%,var(--bg));z-index:25}
+  .desk{display:inline-flex}
+  .tabs,#meBtn,.top .week,.top .filters,.grab{display:none!important}
+  .banner{margin:12px 28px 0}
+  .top{padding:20px 28px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .toprow{gap:12px}
+  .month{font-size:26px}
+  .navs{gap:4px}
+  .nav{width:34px;height:34px;border-radius:10px;background:var(--soft);font-size:20px;font-weight:700;display:grid;place-items:center}
+  .nav:hover,.pill:hover{background:var(--line)}
+  .range{color:var(--muted);font-weight:700}
+  main{padding:4px 28px 48px}
+  .toast{bottom:32px;left:calc(50% + 150px)}
+
+  /* sidebar */
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .brand img{width:36px;height:36px;border-radius:10px}
+  .brand b{flex:1;font-size:18px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .newbtn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border-radius:14px;background:var(--accent);color:#fff;font-weight:800;font-size:16px;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 35%,transparent);margin-bottom:8px}
+  .newbtn:hover{filter:brightness(1.05)}
+  .newbtn kbd{font:inherit;font-size:12px;opacity:.75;border:1px solid rgba(255,255,255,.5);border-radius:6px;padding:0 5px}
+  .snav{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;font-weight:700;color:var(--muted)}
+  .snav span{font-size:18px}
+  .snav small{margin-left:auto;font-weight:700}
+  .snav:hover{background:var(--soft)}
+  .snav.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+  .shd{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 6px 6px;display:flex;align-items:center}
+  .shd .spacer{flex:1}
+  .shd button{width:26px;height:26px;border-radius:8px;font-size:16px;color:var(--ink)}
+  .shd button:hover{background:var(--soft)}
+  .mini{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+  .mini .wd{font-size:11px;font-weight:800;color:var(--muted);padding:2px 0 4px}
+  .mini button{position:relative;aspect-ratio:1;border-radius:50%;font-size:13px;font-weight:600;display:grid;place-items:center}
+  .mini button:hover{background:var(--soft)}
+  .mini button.out{color:color-mix(in srgb,var(--muted) 60%,transparent)}
+  .mini button.inwk{background:color-mix(in srgb,var(--accent) 9%,transparent);border-radius:8px}
+  .mini button.today{color:var(--accent);font-weight:800}
+  .mini button.sel{background:var(--accent);color:#fff;border-radius:50%}
+  .mini button i{position:absolute;bottom:3px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--accent);opacity:.7}
+  .mini button.sel i{background:#fff}
+  .sbrow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:12px;font-weight:600;width:100%;text-align:left}
+  .sbrow:hover{background:var(--soft)}
+  .sbrow.on{background:color-mix(in srgb,var(--c) 14%,var(--card));box-shadow:0 0 0 1.5px var(--c) inset}
+  .sbrow .grow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sbrow small{color:var(--muted);font-weight:700}
+  .sbrow .ls{font-size:18px;width:24px;text-align:center}
+  .sfoot{margin-top:auto;padding-top:16px;font-size:12px;color:var(--muted);line-height:1.6}
+  .sfoot kbd{font:inherit;font-weight:800;background:var(--soft);border-radius:5px;padding:0 5px}
+
+  /* day view + coming up side by side (900–1199) */
+  .split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:32px;align-items:start}
+  .split .sub{margin-top:14px}
+  .lists-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0 16px;align-items:start}
+  .top.onlists .navs,.top.onlists .range{display:none!important}
+
+  /* detail = right-hand panel */
+  .sheet{left:auto;top:0;width:440px;max-height:none;border-radius:24px 0 0 24px;padding:26px 24px 28px;transform:translateX(105%);box-shadow:-10px 0 40px rgba(0,0,0,.12)}
+  .sheet.on{transform:none}
+  .sheet .bigsticker{top:22px}
+
+  /* composer = centered dialog */
+  .composer{inset:auto;left:50%;top:50%;width:620px;max-height:88vh;border-radius:24px;box-shadow:0 30px 80px rgba(0,0,0,.25);transform:translate(-50%,-46%) scale(.97);opacity:0;pointer-events:none;transition:transform .2s,opacity .2s}
+  .composer.on{transform:translate(-50%,-50%);opacity:1;pointer-events:auto}
+  .chead{padding:16px 20px 6px}
+  .cbody{padding:4px 22px 24px}
+  .stk{grid-template-columns:repeat(12,1fr)}
+}
+
+/* Wide desktop: full week columns */
+@media (min-width:1200px){
+  .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;align-items:stretch}
+  .wkcol{display:flex;flex-direction:column;gap:10px;min-height:68vh;padding:8px 8px 10px;border-radius:18px;background:color-mix(in srgb,var(--soft) 55%,transparent)}
+  .wkcol.sel{background:color-mix(in srgb,var(--accent) 7%,var(--bg));box-shadow:0 0 0 1.5px color-mix(in srgb,var(--accent) 35%,transparent) inset}
+  .wkhead{display:flex;align-items:baseline;gap:6px;padding:4px 6px 2px;border-radius:10px;text-align:left}
+  .wkhead b{font-size:22px;letter-spacing:-.02em}
+  .wkhead span{font-size:13px;font-weight:800;text-transform:uppercase;color:var(--muted)}
+  .wkcol.today .wkhead b{color:#fff;background:var(--accent);border-radius:50%;width:34px;height:34px;display:inline-grid;place-items:center;font-size:18px}
+  .wkcol.today .wkhead span{color:var(--accent)}
+  .wkcol .card{margin:0;padding:10px 10px 10px 14px;border-radius:14px}
+  .wkcol .card::before{top:9px;bottom:9px;width:4px}
+  .wkcol .card .when{font-size:12px}
+  .wkcol .card .ttl{font-size:15px;padding-right:22px;line-height:1.25}
+  .wkcol .card .meta{font-size:12px;gap:4px 8px;margin-top:5px}
+  .wkcol .sticker{font-size:26px;top:-8px;right:4px}
+  .wkcol .rsvp{flex-direction:column;gap:6px}
+  .wkcol .rsvp button{padding:7px;font-size:13px}
+  .wkcol .items li{font-size:14px;padding:4px 0;gap:8px}
+  .wkcol .chk{width:20px;height:20px;border-radius:6px;font-size:12px}
+  .wkcol .addline input{font-size:14px;padding:5px 2px}
+  .wkcol .reacts span{font-size:12px}
+  .wkadd{margin-top:auto;padding:8px;border-radius:10px;color:var(--muted);font-weight:700;font-size:14px;opacity:0;transition:opacity .15s}
+  .wkcol:hover .wkadd,.wkcol.sel .wkadd{opacity:1}
+  .wkadd:hover{background:var(--card);color:var(--accent)}
+}
 </style>
 </head>
 <body>
 
 <div id="demoBanner" class="banner hidden">Demo mode: data stays on this phone. Add your Supabase keys to share with the family.</div>
 
+<aside class="side" id="side"></aside>
+
 <header class="top">
   <div class="toprow">
     <label class="month" id="monthLbl"><span id="monthTxt"></span> <small>▾</small><input type="date" id="jump" aria-label="Jump to date"></label>
+    <span class="desk navs"><button class="nav" data-wnav="-1" aria-label="Previous">‹</button><button class="nav" data-wnav="1" aria-label="Next">›</button></span>
+    <span class="desk range" id="rangeTxt"></span>
     <div class="spacer"></div>
     <button class="pill" id="todayBtn">Today</button>
     <button id="meBtn" aria-label="Me and family"></button>
@@ -289,8 +407,8 @@ main{padding:4px 16px 20px}
 /* =========================================================================
    CONFIG — paste your Supabase project values here (leave blank for demo)
    ========================================================================= */
-const SUPABASE_URL = '';        // e.g. 'https://abcd1234.supabase.co'
-const SUPABASE_ANON_KEY = '';   // the anon / publishable key
+const SUPABASE_URL = 'https://sjwarllnehssyphoormc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_eGv0iwOKZ1DP6JixaXZnrQ_vI6nax4S';   // publishable key (safe in the browser; data is protected by row level security)
 const SCHEMA = 'famcal';
 
 /* ========================= Constants ========================= */
@@ -593,14 +711,56 @@ async function refresh(){
 let rT; const liveRefresh = () => { clearTimeout(rT); rT = setTimeout(() => refresh().catch(()=>{}), 250); };
 
 /* ========================= Rendering ========================= */
-function render(){ renderTop(); renderMain(); }
+const mqDesk = matchMedia('(min-width:900px)'), mqWide = matchMedia('(min-width:1200px)');
+const isDesk = () => mqDesk.matches, isWide = () => mqWide.matches;
+let cardMax = 6;
+function render(){ renderTop(); renderMain(); renderSide(); }
+const weekStart = d => addDays(d, -parseYmd(d).getDay());
+function rangeLabel(){
+  if(!isWide()) return '';
+  const a = parseYmd(weekStart(S.sel)), b = parseYmd(addDays(weekStart(S.sel), 6));
+  const f = (d, o) => d.toLocaleDateString(undefined, o);
+  return a.getMonth() === b.getMonth() ? `${f(a,{month:'short'})} ${a.getDate()} – ${b.getDate()}` : `${f(a,{month:'short',day:'numeric'})} – ${f(b,{month:'short',day:'numeric'})}`;
+}
+
+function renderSide(){
+  const el = $('#side');
+  if(!isDesk() || !S.me){ el.innerHTML = ''; return; }
+  const sel = parseYmd(S.sel), t = todayStr();
+  const first = new Date(sel.getFullYear(), sel.getMonth(), 1), gs = addDays(ymd(first), -first.getDay());
+  const ws = weekStart(S.sel), we = addDays(ws, 6);
+  let mini = ['S','M','T','W','T','F','S'].map(d => `<span class="wd">${d}</span>`).join('');
+  for(let i=0;i<42;i++){
+    const d = addDays(gs, i), dt = parseYmd(d);
+    if(i === 35 && dt.getMonth() !== sel.getMonth()) break;
+    const cls = [dt.getMonth() !== sel.getMonth() ? 'out' : '', d === t ? 'today' : '', d === S.sel && S.tab==='cal' ? 'sel' : '',
+                 isWide() && S.tab==='cal' && d >= ws && d <= we ? 'inwk' : ''].join(' ');
+    mini += `<button class="${cls}" data-day="${d}">${dt.getDate()}${dayEvents(d).length ? '<i></i>' : ''}</button>`;
+  }
+  const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(t,-7)))
+    .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
+  el.innerHTML = `
+    <div class="brand"><img src="icons/icon-192.png" alt=""><b>${esc(S.family?.name || 'Family')}</b><button data-me aria-label="Me and family">${avatar(S.me)}</button></div>
+    <button class="newbtn" data-new>＋ New <kbd>N</kbd></button>
+    <button class="snav ${S.tab==='cal'?'on':''}" data-tab="cal"><span>📅</span>Calendar</button>
+    <button class="snav ${S.tab==='lists'?'on':''}" data-tab="lists"><span>☑️</span>Lists<small>${lists.length || ''}</small></button>
+    <div class="shd">${esc(sel.toLocaleDateString(undefined,{month:'long', year:'numeric'}))}<span class="spacer"></span><button data-mnav="-1" aria-label="Previous month">‹</button><button data-mnav="1" aria-label="Next month">›</button></div>
+    <div class="mini">${mini}</div>
+    ${S.members.length > 1 ? `<div class="shd">People${S.filter.size ? '<span class="spacer"></span><button data-clearfilter style="width:auto;padding:0 6px;font-size:12px;color:var(--accent)">Show all</button>' : ''}</div>
+      ${S.members.map(m => `<button class="sbrow ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m,'sm')}<span class="grow">${esc(m.name)}${m.id===S.me.id?' <small>(you)</small>':''}</span></button>`).join('')}` : ''}
+    ${lists.length ? `<div class="shd">Lists</div>${lists.slice(0,8).map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
+      return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'☑️')}</span><span class="grow">${esc(e.title)}</span><small>${left ? left+' left' : '✓'}</small></button>`; }).join('')}` : ''}
+    <div class="sfoot"><kbd>N</kbd> new · <kbd>←</kbd><kbd>→</kbd> move · <kbd>T</kbd> today</div>`;
+}
 
 function renderTop(){
   const sel = parseYmd(S.sel);
   $('#monthTxt').textContent = sel.toLocaleDateString(undefined, {month:'long'}) + (sel.getFullYear() !== new Date().getFullYear() ? ' ' + sel.getFullYear() : '');
   $('#jump').value = S.sel;
   $('#meBtn').innerHTML = avatar(S.me);
-  $('#todayBtn').classList.toggle('hidden', S.sel === todayStr());
+  $('#todayBtn').classList.toggle('hidden', isWide() ? (todayStr() >= weekStart(S.sel) && todayStr() <= addDays(weekStart(S.sel),6)) : S.sel === todayStr());
+  $('#rangeTxt').textContent = rangeLabel();
+  document.querySelector('.top').classList.toggle('onlists', S.tab === 'lists');
   const start = addDays(S.sel, -sel.getDay()), t = todayStr();
   let w = '';
   for(let i=0;i<7;i++){
@@ -617,6 +777,8 @@ function renderTop(){
 }
 
 function renderMain(){
+  if(isDesk()) return renderDesk();
+  cardMax = 6;
   let h = '';
   if(S.tab === 'cal'){
     if(S.sel === todayStr()){
@@ -626,7 +788,7 @@ function renderMain(){
     }
     h += `<div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>`;
     const evs = dayEvents(S.sel);
-    h += evs.length ? evs.map(card).join('') : `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
+    h += evs.length ? evs.map(e => card(e)).join('') : `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
       <button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`;
     const up = [];
     for(let i=1; i<=21 && up.length<6; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<6 && up.push(e));
@@ -635,7 +797,38 @@ function renderMain(){
     const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(todayStr(),-7)))
       .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
     h += `<div class="dayhead"><h2>Lists</h2><span>${lists.length}</span></div>`;
-    h += lists.length ? lists.map(card).join('') : `<div class="empty"><span class="big">🛒</span>No lists yet.<br><button class="try" data-try="Groceries: milk, eggs, bread" data-kind="list">Try “Groceries: milk, eggs, bread”</button></div>`;
+    h += lists.length ? `<div class="lists-grid">${lists.map(e => card(e)).join('')}</div>` : `<div class="empty"><span class="big">🛒</span>No lists yet.<br><button class="try" data-try="Groceries: milk, eggs, bread" data-kind="list">Try “Groceries: milk, eggs, bread”</button></div>`;
+  }
+  $('#main').innerHTML = h;
+}
+
+function renderDesk(){
+  let h = '';
+  const empty = `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br><button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`;
+  if(S.tab === 'lists'){
+    cardMax = 12;
+    const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(todayStr(),-7)))
+      .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
+    h += `<div class="dayhead"><h2>Lists</h2><span>${lists.length}</span></div>`;
+    h += lists.length ? `<div class="lists-grid">${lists.map(e => card(e)).join('')}</div>` : `<div class="empty"><span class="big">🛒</span>No lists yet.<br><button class="try" data-try="Groceries: milk, eggs, bread" data-kind="list">Try “Groceries: milk, eggs, bread”</button></div>`;
+  } else if(isWide()){
+    cardMax = 4;
+    const ws = weekStart(S.sel), t = todayStr();
+    h += '<div class="wk">';
+    for(let i=0;i<7;i++){
+      const d = addDays(ws, i), dt = parseYmd(d), evs = dayEvents(d);
+      h += `<section class="wkcol ${d===S.sel?'sel':''} ${d===t?'today':''}">
+        <button class="wkhead" data-day="${d}"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString(undefined,{weekday:'short'})}</span></button>
+        ${evs.map(e => card(e)).join('')}
+        <button class="wkadd" data-addday="${d}">＋ Add</button></section>`;
+    }
+    h += '</div>';
+  } else {
+    cardMax = 8;
+    const evs = dayEvents(S.sel), up = [];
+    for(let i=1; i<=30 && up.length<12; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<12 && up.push(e));
+    h += `<div class="split"><div><div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>${evs.length ? evs.map(e => card(e)).join('') : empty}</div>
+      <div><div class="sub">Coming up</div>${up.length ? up.map(rowHTML).join('') : '<p style="color:var(--muted)">Nothing else on the calendar yet.</p>'}</div></div>`;
   }
   $('#main').innerHTML = h;
 }
@@ -668,7 +861,7 @@ function card(ev){
   if(v.kind==='invite' && v.invitees?.includes(S.me.id) && !mine && v.owner_id !== S.me.id){
     h += `<div class="rsvp"><button class="y" data-rsvp="yes" data-id="${v.id}">👍 I'm in</button><button data-rsvp="no" data-id="${v.id}">Can't</button></div>`;
   }
-  if(v.kind === 'list') h += listHTML(v, 6);
+  if(v.kind === 'list') h += listHTML(v, cardMax);
   h += reactsHTML(v);
   return h + `</div>`;
 }
@@ -755,11 +948,11 @@ function openComposer(opts = {}){
   $('#cText').value = text; $('#cItems').value = ''; $('#cNotes').value = ev?.notes || '';
   $('#cNotes').classList.toggle('hidden', !ev?.notes); $('#cNotesBtn').classList.toggle('hidden', !!ev?.notes);
   $('#cTitle').textContent = ev ? 'Edit' : 'New'; $('#cSave').textContent = ev ? 'Save' : 'Add';
-  $('#composer').classList.add('on'); $('#composer').setAttribute('aria-hidden','false');
+  $('#composer').classList.add('on'); $('#composer').setAttribute('aria-hidden','false'); if(isDesk()) $('#scrim').classList.add('on');
   updateComposer(); autoGrow();
   setTimeout(() => { const t = $('#cText'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 60);
 }
-function closeComposer(){ $('#composer').classList.remove('on'); $('#composer').setAttribute('aria-hidden','true'); $('#cText').blur(); C = null; }
+function closeComposer(){ if(!$('#sheet').classList.contains('on')) $('#scrim').classList.remove('on'); $('#composer').classList.remove('on'); $('#composer').setAttribute('aria-hidden','true'); $('#cText').blur(); C = null; }
 
 function draft(){
   const p = parseQuick($('#cText').value, {kind:C.kind, noDateTime:C.editing});
@@ -992,10 +1185,16 @@ async function finishOnboard(isNew){
 /* ========================= Events ========================= */
 document.addEventListener('click', e => {
   if(e.target.closest('#onboard')){ const b = e.target.closest('button'); if(b) obAction(b); return; }
-  const t = e.target.closest('[data-day],[data-filter],[data-open],[data-rsvp],[data-check],[data-delitem],[data-react],[data-edit],[data-del],[data-ics],[data-try],[data-tab],[data-kind],[data-qd],[data-stk],[data-ins],[data-viewas],[data-meemoji],[data-mecolor],[data-stop],button');
+  const t = e.target.closest('[data-new],[data-me],[data-clearfilter],[data-wnav],[data-mnav],[data-addday],[data-day],[data-filter],[data-open],[data-rsvp],[data-check],[data-delitem],[data-react],[data-edit],[data-del],[data-ics],[data-try],[data-tab],[data-kind],[data-qd],[data-stk],[data-ins],[data-viewas],[data-meemoji],[data-mecolor],[data-stop],button');
   if(!t) return;
   const d = t.dataset;
-  if(d.day){ S.sel = d.day; render(); return; }
+  if(d.new !== undefined){ openComposer(); return; }
+  if(d.me !== undefined){ openMe(); return; }
+  if(d.clearfilter !== undefined){ S.filter.clear(); render(); return; }
+  if(d.wnav){ step(+d.wnav); return; }
+  if(d.mnav){ const x = parseYmd(S.sel), m = new Date(x.getFullYear(), x.getMonth() + +d.mnav, 1); S.sel = ymd(m); render(); return; }
+  if(d.addday){ S.sel = d.addday; render(); openComposer(); return; }
+  if(d.day){ S.sel = d.day; if(S.tab !== 'cal') setTab('cal'); else render(); return; }
   if(d.filter){ S.filter.has(d.filter) ? S.filter.delete(d.filter) : S.filter.add(d.filter); render(); return; }
   if(d.rsvp){ setRsvp(d.id, d.rsvp); return; }
   if(d.check){ toggleItem(d.check); return; }
@@ -1030,7 +1229,7 @@ document.addEventListener('click', e => {
   if(t.id === 'resetDemo'){ if(confirm('Reset demo data?')) B.reset().then(() => location.reload()); return; }
   if(t.id === 'signOut'){ if(confirm('Sign out on this phone? You can sign back in with the family code + your PIN.')) B.signOut().then(() => location.reload()); return; }
 });
-$('#scrim').onclick = () => { $('#sheet').onclick = null; closeSheet(); };
+$('#scrim').onclick = () => { if(C){ closeComposer(); return; } $('#sheet').onclick = null; closeSheet(); };
 $('#addBtn').onclick = () => openComposer();
 $('#meBtn').onclick = openMe;
 $('#todayBtn').onclick = () => { S.sel = todayStr(); render(); };
@@ -1052,7 +1251,16 @@ $('#composer').addEventListener('change', e => {
   updateComposer();
 });
 function shiftEnd(os, oe, ns){ const mins = s => +s.slice(0,2)*60 + +s.slice(3,5); const n = Math.min(mins(ns) + mins(oe) - mins(os), 23*60+59); return pad(Math.floor(n/60)) + ':' + pad(n%60); }
+function step(dir){ S.sel = addDays(S.sel, (isWide() && S.tab==='cal' ? 7 : 1) * dir); if(S.tab !== 'cal') setTab('cal'); else render(); }
 document.addEventListener('keydown', e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+  const busy = C || $('#sheet').classList.contains('on') || !$('#onboard').classList.contains('hidden');
+  if(!typing && !busy && !e.metaKey && !e.ctrlKey && !e.altKey && S.me){
+    if(e.key === 'n' || e.key === 'N'){ e.preventDefault(); openComposer(); return; }
+    if(e.key === 't' || e.key === 'T'){ S.sel = todayStr(); render(); return; }
+    if(e.key === 'ArrowLeft'){ step(-1); return; }
+    if(e.key === 'ArrowRight'){ step(1); return; }
+  }
   if(e.target.dataset?.additem && e.key === 'Enter'){ e.preventDefault(); addItemsFromInput(e.target); }
   if(e.key === 'Escape'){ if(C) closeComposer(); else closeSheet(); }
 });
@@ -1066,6 +1274,8 @@ function swipe(el, fn){
 }
 swipe($('#week'), dir => { S.sel = addDays(S.sel, 7*dir); render(); });
 swipe($('#main'), dir => { if(S.tab === 'cal' && !document.activeElement?.dataset?.additem){ S.sel = addDays(S.sel, dir); render(); } });
+
+[mqDesk, mqWide].forEach(m => m.addEventListener('change', () => { if(S.me) render(); }));
 
 /* ========================= Boot ========================= */
 (async function boot(){
