@@ -10,8 +10,12 @@
 <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#151413" media="(prefers-color-scheme: dark)">
 <title>Family Calendar</title>
-<link rel="apple-touch-icon" id="touchIcon">
-<link rel="icon" id="favIcon">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.ico" sizes="48x48">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="icons/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" sizes="180x180">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -1063,19 +1067,6 @@ function swipe(el, fn){
 swipe($('#week'), dir => { S.sel = addDays(S.sel, 7*dir); render(); });
 swipe($('#main'), dir => { if(S.tab === 'cal' && !document.activeElement?.dataset?.additem){ S.sel = addDays(S.sel, dir); render(); } });
 
-/* ========================= Icon ========================= */
-(function makeIcon(){
-  try{
-    const c = document.createElement('canvas'); c.width = c.height = 180; const x = c.getContext('2d');
-    const g = x.createLinearGradient(0,0,180,180); g.addColorStop(0,'#ff8a5c'); g.addColorStop(1,'#ff5a7a');
-    x.fillStyle = g; x.fillRect(0,0,180,180);
-    x.fillStyle = '#fff'; x.beginPath(); x.roundRect ? x.roundRect(34,40,112,104,18) : x.rect(34,40,112,104); x.fill();
-    x.fillStyle = '#ff6b4a'; x.fillRect(34,40,112,26);
-    x.font = '56px system-ui, Apple Color Emoji, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🎉', 92, 108);
-    const url = c.toDataURL('image/png'); $('#touchIcon').href = url; $('#favIcon').href = url;
-  }catch(e){}
-})();
-
 /* ========================= Boot ========================= */
 (async function boot(){
   const configured = SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase;
@@ -1090,6 +1081,10 @@ swipe($('#main'), dir => { if(S.tab === 'cal' && !document.activeElement?.datase
     }
     await refresh();
     B.subscribe(liveRefresh);
+    const q = new URLSearchParams(location.search);
+    if(q.get('tab') === 'lists') setTab('lists');
+    if(q.has('add')) openComposer();
+    if(q.has('tab') || q.has('add')) history.replaceState(null, '', location.pathname);
   }catch(e){
     if(e.message === 'not-member') return ob('welcome');
     console.error(e);
