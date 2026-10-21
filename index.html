@@ -226,6 +226,20 @@ main{padding:4px 16px 20px}
 @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .shake{animation:shake .25s 2}
 
+/* ---------- Notifications ---------- */
+.tog{display:flex;align-items:center;gap:10px;width:100%;padding:11px 2px;border-bottom:1px solid var(--line);text-align:left;font-weight:600}
+.tog > span{width:24px;text-align:center}
+.tog .sw{margin-left:auto;flex:none;width:46px;height:28px;border-radius:14px;background:var(--line);position:relative;transition:background .15s}
+.tog .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.tog.on .sw{background:var(--good)}
+.tog.on .sw::after{transform:translateX(18px)}
+.nudge{display:flex;align-items:center;gap:10px;background:var(--card);box-shadow:var(--shadow);border-radius:16px;padding:8px 8px 8px 14px;margin:0 0 14px;font-weight:700;font-size:15px}
+.nudge .ni{font-size:20px}
+.nudge .nt{flex:1}
+.nudge .pill.on{background:var(--accent);color:#fff}
+.nudge .nx{color:var(--muted);padding:6px 8px}
+@media (min-width:1200px){ .nudge{max-width:560px} }
+
 /* ================= Larger screens ================= */
 .side,.desk{display:none}
 @media (hover:hover){
@@ -409,6 +423,8 @@ main{padding:4px 16px 20px}
 const SUPABASE_URL = 'https://sjwarllnehssyphoormc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_eGv0iwOKZ1DP6JixaXZnrQ_vI6nax4S';   // publishable key (safe in the browser; data is protected by row level security)
 const SCHEMA = 'famcal';
+const VAPID_PUBLIC_KEY = 'BFWYESsKsaPwOz4m9ck-8n2Uy77VFqEDqhGLB3dRkc1Yoihpt-rW6pTTw9ooGTb0Hcn2b21_sCIDIqcDbZEWfqc';   // public half of the push key pair (safe to publish)
+const PUSH_FN = 'famcal-push';
 const APP_ICON = document.querySelector('link[rel=apple-touch-icon]').href;
 
 /* ========================= Constants ========================= */
@@ -624,10 +640,12 @@ function LocalBackend(){
     async addMember(m){ db.members.push({id:uid(), name:m.name, emoji:m.emoji, color:m.color}); save(); },
     async switchMember(id){ db.meId = id; save(); },
     async reset(){ localStorage.removeItem(KEY); },
+    notify(){},
     subscribe(){},
   };
 }
 
+async function fnError(err){ try{ const j = await err.context.json(); return j.error || err.message; }catch(e){ return err.message || 'Notification service unavailable'; } }
 function SupaBackend(){
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db:{ schema:SCHEMA }, auth:{ persistSession:true, autoRefreshToken:true } });
   let meId = null, famId = null;
@@ -689,6 +707,11 @@ function SupaBackend(){
     async updateFamily(p){ ok(await sb.from('families').update(p).eq('id', famId)); },
     async addMember(m){ await rpc('add_member', {p_name:m.name, p_emoji:m.emoji, p_color:m.color, p_pin:m.pin}); },
     async signOut(){ await sb.from('devices').delete().eq('user_id', (await sb.auth.getUser()).data.user.id); await sb.auth.signOut(); },
+    notify(body){ sb.functions.invoke(PUSH_FN, {body}).then(r => { if(r.error) console.warn('notify', r.error); }).catch(()=>{}); },
+    async savePush(sub, prefs){ const j = sub.toJSON(); await rpc('save_push_sub', {p_endpoint:j.endpoint, p_p256dh:j.keys.p256dh, p_auth:j.keys.auth, p_prefs:prefs, p_ua:navigator.userAgent}); },
+    async deletePush(endpoint){ await rpc('delete_push_sub', {p_endpoint:endpoint}); },
+    async getPush(endpoint){ return ok(await sb.from('push_subs').select('prefs').eq('endpoint', endpoint).maybeSingle()); },
+    async testPush(){ const r = await sb.functions.invoke(PUSH_FN, {body:{type:'test'}}); if(r.error) throw new Error(await fnError(r.error)); return r.data; },
     subscribe(onChange){
       const ch = sb.channel('famcal-live');
       ['events','event_private','list_items','rsvps','reactions','members','families'].forEach(t =>
@@ -781,6 +804,7 @@ function renderMain(){
   cardMax = 6;
   let h = '';
   if(S.tab === 'cal'){
+    h += pushNudge();
     if(S.sel === todayStr()){
       const pins = S.events.filter(e => e.kind==='list' && !e.starts_on && passesFilter(e));
       if(pins.length) h += `<div class="pinned">${pins.map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
@@ -813,6 +837,7 @@ function renderDesk(){
     h += lists.length ? `<div class="lists-grid">${lists.map(e => card(e)).join('')}</div>` : `<div class="empty"><span class="big">🛒</span>No lists yet.<br><button class="try" data-try="Groceries: milk, eggs, bread" data-kind="list">Try “Groceries: milk, eggs, bread”</button></div>`;
   } else if(isWide()){
     cardMax = 4;
+    h += pushNudge();
     const ws = weekStart(S.sel), t = todayStr();
     h += '<div class="wk">';
     for(let i=0;i<7;i++){
@@ -825,6 +850,7 @@ function renderDesk(){
     h += '</div>';
   } else {
     cardMax = 8;
+    h += pushNudge();
     const evs = dayEvents(S.sel), up = [];
     for(let i=1; i<=30 && up.length<12; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<12 && up.push(e));
     h += `<div class="split"><div><div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>${evs.length ? evs.map(e => card(e)).join('') : empty}</div>
@@ -887,8 +913,8 @@ function rowHTML(ev){
 }
 
 /* ========================= Detail sheet ========================= */
-function openSheet(html){ $('#sheet').innerHTML = `<div class="grab"></div>` + html; $('#sheet').classList.add('on'); $('#scrim').classList.add('on'); }
-function closeSheet(){ $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); S.openId = null; }
+function openSheet(html){ delete $('#sheet').dataset.me; $('#sheet').innerHTML = `<div class="grab"></div>` + html; $('#sheet').classList.add('on'); $('#scrim').classList.add('on'); }
+function closeSheet(){ delete $('#sheet').dataset.me; $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); S.openId = null; }
 
 function openDetail(id, quiet){
   const ev = S.events.find(e => e.id === id); if(!ev) return;
@@ -1039,6 +1065,8 @@ async function saveComposer(){
     const saved = await B.saveEvent(ev);
     if(d.kind === 'list' && d.items.length) await B.addItems(saved.id, d.items);
     const wasEdit = C.editing; closeComposer();
+    if(d.kind !== 'private') B.notify(!wasEdit ? {type:'event', action:'created', event_id:saved.id, count:d.items.length}
+      : (d.kind === 'list' && d.items.length) ? {type:'items', event_id:saved.id, texts:d.items} : {type:'event', action:'updated', event_id:saved.id});
     if(d.date){ S.sel = d.date; S.tab = 'cal'; setTab('cal'); }
     else if(d.kind === 'list'){ setTab('lists'); }
     await refresh();
@@ -1064,17 +1092,17 @@ function addItemsFromInput(input){
   const texts = input.value.split(',').map(s => s.trim()).filter(Boolean); if(!texts.length) return;
   const eid = input.dataset.additem; input.value = '';
   const tmp = texts.map((t,k) => ({id:'tmp'+Math.random(), event_id:eid, text:t, done:false, position:1e12 + k}));
-  act(() => B.addItems(eid, texts), () => { S.items.push(...tmp); });
+  act(() => B.addItems(eid, texts).then(() => { B.notify({type:'items', event_id:eid, texts}); }), () => { S.items.push(...tmp); });
   setTimeout(() => { const n = document.querySelector(`[data-additem="${eid}"]`); n && n.focus(); }, 30);
 }
 function setRsvp(id, status){
   const cur = myRsvp({id}); const next = cur === status ? null : status;
-  act(() => B.setRsvp(id, next), () => { S.rsvps = S.rsvps.filter(r => !(r.event_id===id && r.member_id===S.me.id)); if(next) S.rsvps.push({event_id:id, member_id:S.me.id, status:next}); });
+  act(() => B.setRsvp(id, next).then(() => { if(next) B.notify({type:'rsvp', event_id:id, status:next}); }), () => { S.rsvps = S.rsvps.filter(r => !(r.event_id===id && r.member_id===S.me.id)); if(next) S.rsvps.push({event_id:id, member_id:S.me.id, status:next}); });
   if(next === 'yes') toast('👍 You’re in!');
 }
 function react(id, st){
   const on = !S.reactions.some(r => r.event_id===id && r.member_id===S.me.id && r.sticker===st);
-  act(() => B.setReaction(id, st, on), () => { S.reactions = S.reactions.filter(r => !(r.event_id===id && r.member_id===S.me.id && r.sticker===st)); if(on) S.reactions.push({event_id:id, member_id:S.me.id, sticker:st}); });
+  act(() => B.setReaction(id, st, on).then(() => { if(on) B.notify({type:'react', event_id:id, sticker:st}); }), () => { S.reactions = S.reactions.filter(r => !(r.event_id===id && r.member_id===S.me.id && r.sticker===st)); if(on) S.reactions.push({event_id:id, member_id:S.me.id, sticker:st}); });
   if(navigator.vibrate) navigator.vibrate(10);
 }
 async function deleteEvent(id){
@@ -1087,12 +1115,83 @@ function setTab(t){
   render(); window.scrollTo({top:0});
 }
 
+/* ========================= Notifications ========================= */
+const PUSH_DEFAULTS = {invites:true, replies:true, lists:true, family:false, reminders:true, morning:true};
+const PUSH_PREFS = [['invites','📨','Invites to me'],['replies','👍','Replies & reactions to my events'],['lists','🛒','List updates'],
+                    ['family','🗓️','Anything new on the calendar'],['reminders','⏰','Reminder 30 min before'],['morning','☀️','Morning summary at 7am']];
+const P = { ios:false, standalone:false, supported:false, perm:'default', reg:null, sub:null, prefs:{...PUSH_DEFAULTS}, busy:false };
+const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){} };
+const b64uBytes = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/') + '==='.slice((s.length+3)%4)), c => c.charCodeAt(0));
+
+async function pushInit(){
+  P.ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  P.standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  if(!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  try{ P.reg = await navigator.serviceWorker.register('sw.js'); }catch(e){ return; }
+  P.supported = 'PushManager' in window && 'Notification' in window;
+  if(!P.supported) return;
+  P.perm = Notification.permission;
+  try{ P.sub = await P.reg.pushManager.getSubscription(); }catch(e){}
+  if(P.sub && B.getPush){
+    try{ const row = await B.getPush(P.sub.endpoint); if(row) P.prefs = {...PUSH_DEFAULTS, ...row.prefs}; }catch(e){}
+    B.savePush(P.sub, P.prefs).catch(()=>{});   // keeps this phone linked to whoever is signed in
+  }
+  render();
+}
+
+function pushEnable(btn){
+  if(P.busy) return;
+  const asked = Notification.requestPermission();      // must happen right inside the tap (iOS rule)
+  P.busy = true; if(btn) btn.disabled = true;
+  asked.then(async perm => {
+    P.perm = perm;
+    if(perm !== 'granted'){ toast('🔕 Notifications not allowed'); return; }
+    const reg = P.reg || await navigator.serviceWorker.ready;
+    P.sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64uBytes(VAPID_PUBLIC_KEY)});
+    await B.savePush(P.sub, P.prefs);
+    toast('🔔 Notifications on');
+    B.testPush().catch(e => toast('⚠️ ' + e.message));
+  }).catch(e => toast('⚠️ ' + e.message))
+    .finally(() => { P.busy = false; render(); if($('#sheet').dataset.me) openMe(); });
+}
+async function pushDisable(){
+  const s = P.sub; P.sub = null;
+  try{ await B.deletePush(s.endpoint); }catch(e){}
+  try{ await s.unsubscribe(); }catch(e){}
+  toast('🔕 Notifications off'); openMe(); render();
+}
+function pushToggle(key){
+  P.prefs[key] = !P.prefs[key]; openMe();
+  B.savePush(P.sub, P.prefs).catch(e => toast('⚠️ ' + e.message));
+}
+function pushSection(){
+  if(B.mode === 'demo') return `<div class="privnote">Notifications work once the app is connected to Supabase.</div>`;
+  if(P.ios && !P.standalone) return `<div class="privnote">📲 On iPhone, notifications only work in the Home Screen app: tap <b>Share</b> → <b>Add to Home Screen</b>, open <b>Family</b> from your Home Screen, then turn them on here.</div>`;
+  if(!P.supported) return `<div class="privnote">This browser doesn't support notifications.</div>`;
+  if(P.perm === 'denied') return `<div class="privnote">🔕 Notifications are blocked. ${P.ios ? 'Turn them on in iPhone <b>Settings → Notifications → Family</b>, then come back here.' : 'Allow them in this site’s settings in your browser.'}</div>`;
+  if(!P.sub) return `<button class="btn primary" style="width:100%" data-pushon>🔔 Turn on notifications</button>
+    <p class="hint" style="margin-top:8px">Get invites, replies, list updates and reminders on this ${P.ios ? 'phone' : 'device'}.</p>`;
+  return PUSH_PREFS.map(([k,ic,txt]) => `<button class="tog ${P.prefs[k] ? 'on' : ''}" data-pref="${k}"><span>${ic}</span>${txt}<i class="sw"></i></button>`).join('') +
+    `<div class="btns"><button class="btn" id="pushTest">Send a test</button><button class="btn danger" id="pushOff">Turn off</button></div>`;
+}
+function pushNudge(){
+  if(B.mode !== 'supabase' || !P.supported || P.sub || P.perm !== 'default' || (P.ios && !P.standalone) || lsGet('famcal-nudge')) return '';
+  return `<div class="nudge"><span class="ni">🔔</span><span class="nt">Get invites, replies &amp; reminders</span><button class="pill on" data-pushon>Turn on</button><button class="nx" data-nudgex aria-label="Dismiss">✕</button></div>`;
+}
+function openFromLink(id){
+  const ev = S.events.find(e => e.id === id); if(!ev) return;
+  if(ev.starts_on){ S.sel = ev.starts_on; setTab('cal'); } else if(ev.kind === 'list') setTab('lists');
+  openDetail(id);
+}
+
 /* ========================= Me / family sheet ========================= */
 function openMe(){
   const me = S.me;
   let h = `<div style="display:flex;align-items:center;gap:12px">${avatar(me,'lg')}<div style="flex:1"><input class="field" id="meName" value="${esc(me.name)}" style="margin:0"></div></div>
     <div class="lbl">Your avatar</div><div class="emojis">${AVATARS.map(a => `<button class="${a===me.emoji?'on':''}" data-meemoji="${a}">${a}</button>`).join('')}</div>
     <div class="lbl">Your color</div><div class="colors">${COLORS.map(c => `<button class="${c===me.color?'on':''}" style="--c:${c}" data-mecolor="${c}"></button>`).join('')}</div>
+    <div class="lbl">Notifications</div>${pushSection()}
     <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
     <div class="codebox"><b>${esc(S.family?.code || '')}</b><button class="pill" id="shareCode">Share</button></div>
     <div class="lbl">Family</div>
@@ -1101,7 +1200,8 @@ function openMe(){
   h += B.mode === 'demo'
     ? `<div class="btns"><button class="btn danger" id="resetDemo">Reset demo</button></div>`
     : `<div class="btns"><button class="btn danger" id="signOut">Sign out on this phone</button></div>`;
-  openSheet(h);
+  const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.me ? $('#sheet').scrollTop : 0;
+  openSheet(h); $('#sheet').dataset.me = '1'; $('#sheet').scrollTop = keep;
 }
 function openAddMember(){
   const st = {emoji:'👶', color:COLORS[S.members.length % COLORS.length]};
@@ -1178,6 +1278,9 @@ async function finishOnboard(isNew){
   $('#onboard').classList.add('hidden');
   history.replaceState(null, '', location.pathname);
   await refresh(); B.subscribe(liveRefresh);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if(isNew && tz) B.updateFamily({tz}).catch(()=>{});
+  pushInit();
   if(isNew) setTimeout(openMe, 400);
   toast(`👋 Welcome, ${firstName(S.me.name)}!`);
 }
@@ -1226,6 +1329,11 @@ document.addEventListener('click', e => {
     return;
   }
   if(t.id === 'addKid'){ openAddMember(); return; }
+  if(d.pushon !== undefined){ pushEnable(t); return; }
+  if(d.pref){ pushToggle(d.pref); return; }
+  if(d.nudgex !== undefined){ lsSet('famcal-nudge', '1'); render(); return; }
+  if(t.id === 'pushOff'){ pushDisable(); return; }
+  if(t.id === 'pushTest'){ t.disabled = true; B.testPush().then(r => toast(r?.sent ? '🔔 Test sent' : '⚠️ No devices to send to')).catch(e => toast('⚠️ ' + e.message)).finally(() => { t.disabled = false; }); return; }
   if(t.id === 'resetDemo'){ if(confirm('Reset demo data?')) B.reset().then(() => location.reload()); return; }
   if(t.id === 'signOut'){ if(confirm('Sign out on this phone? You can sign back in with the family code + your PIN.')) B.signOut().then(() => location.reload()); return; }
 });
@@ -1275,6 +1383,11 @@ function swipe(el, fn){
 swipe($('#week'), dir => { S.sel = addDays(S.sel, 7*dir); render(); });
 swipe($('#main'), dir => { if(S.tab === 'cal' && !document.activeElement?.dataset?.additem){ S.sel = addDays(S.sel, dir); render(); } });
 
+if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => {
+  if(e.data?.type !== 'open') return;
+  const id = new URL(e.data.url).searchParams.get('open');
+  refresh().then(() => { if(id) openFromLink(id); }).catch(()=>{});
+});
 [mqDesk, mqWide].forEach(m => m.addEventListener('change', () => { if(S.me) render(); }));
 
 /* ========================= Boot ========================= */
@@ -1294,7 +1407,11 @@ swipe($('#main'), dir => { if(S.tab === 'cal' && !document.activeElement?.datase
     const q = new URLSearchParams(location.search);
     if(q.get('tab') === 'lists') setTab('lists');
     if(q.has('add')) openComposer();
-    if(q.has('tab') || q.has('add')) history.replaceState(null, '', location.pathname);
+    if(q.get('open')) openFromLink(q.get('open'));
+    if(q.has('tab') || q.has('add') || q.has('open')) history.replaceState(null, '', location.pathname);
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if(B.mode === 'supabase' && S.family && !S.family.tz && tz) B.updateFamily({tz}).catch(()=>{});
+    pushInit();
   }catch(e){
     if(e.message === 'not-member') return ob('welcome');
     console.error(e);
