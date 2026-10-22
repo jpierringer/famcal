@@ -226,6 +226,9 @@ main{padding:4px 16px 20px}
 @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .shake{animation:shake .25s 2}
 
+.namefield{position:relative;display:block}
+.namefield input{padding-right:40px;font-weight:700}
+.namefield span{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.6;pointer-events:none}
 /* ---------- Notifications ---------- */
 .tog{display:flex;align-items:center;gap:10px;width:100%;padding:11px 2px;border-bottom:1px solid var(--line);text-align:left;font-weight:600}
 .tog > span{width:24px;text-align:center}
@@ -1188,7 +1191,7 @@ function openFromLink(id){
 /* ========================= Me / family sheet ========================= */
 function openMe(){
   const me = S.me;
-  let h = `<div style="display:flex;align-items:center;gap:12px">${avatar(me,'lg')}<div style="flex:1"><input class="field" id="meName" value="${esc(me.name)}" style="margin:0"></div></div>
+  let h = `<div style="display:flex;align-items:center;gap:12px">${avatar(me,'lg')}<div style="flex:1"><label class="namefield"><input class="field" id="meName" value="${esc(me.name)}" maxlength="40" placeholder="Your name" autocomplete="off" enterkeyhint="done" style="margin:0"><span>✏️</span></label><div class="hint" style="margin:4px 2px 0">Tap to change your name</div></div></div>
     <div class="lbl">Your avatar</div><div class="emojis">${AVATARS.map(a => `<button class="${a===me.emoji?'on':''}" data-meemoji="${a}">${a}</button>`).join('')}</div>
     <div class="lbl">Your color</div><div class="colors">${COLORS.map(c => `<button class="${c===me.color?'on':''}" style="--c:${c}" data-mecolor="${c}"></button>`).join('')}</div>
     <div class="lbl">Notifications</div>${pushSection()}
@@ -1360,7 +1363,16 @@ $('#composer').addEventListener('change', e => {
 });
 function shiftEnd(os, oe, ns){ const mins = s => +s.slice(0,2)*60 + +s.slice(3,5); const n = Math.min(mins(ns) + mins(oe) - mins(os), 23*60+59); return pad(Math.floor(n/60)) + ':' + pad(n%60); }
 function step(dir){ S.sel = addDays(S.sel, (isWide() && S.tab==='cal' ? 7 : 1) * dir); if(S.tab !== 'cal') setTab('cal'); else render(); }
+async function saveMyName(input){
+  const name = input.value.trim().replace(/\s+/g, ' ');
+  if(!name){ input.value = S.me.name; return; }
+  if(name === S.me.name) return;
+  try{ await B.updateMe({name}); S.me.name = name; await refresh(); if($('#sheet').dataset.me) openMe(); toast('✓ Name saved'); }
+  catch(e){ input.value = S.me.name; toast('⚠️ ' + e.message); }
+}
+document.addEventListener('change', e => { if(e.target.id === 'meName') saveMyName(e.target); });
 document.addEventListener('keydown', e => {
+  if(e.target.id === 'meName' && e.key === 'Enter'){ e.preventDefault(); e.target.blur(); return; }
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
   const busy = C || $('#sheet').classList.contains('on') || !$('#onboard').classList.contains('hidden');
   if(!typing && !busy && !e.metaKey && !e.ctrlKey && !e.altKey && S.me){
