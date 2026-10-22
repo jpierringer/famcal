@@ -916,8 +916,8 @@ function rowHTML(ev){
 }
 
 /* ========================= Detail sheet ========================= */
-function openSheet(html){ delete $('#sheet').dataset.me; $('#sheet').innerHTML = `<div class="grab"></div>` + html; $('#sheet').classList.add('on'); $('#scrim').classList.add('on'); }
-function closeSheet(){ delete $('#sheet').dataset.me; $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); S.openId = null; }
+function openSheet(html){ delete $('#sheet').dataset.panel; $('#sheet').innerHTML = `<div class="grab"></div>` + html; $('#sheet').classList.add('on'); $('#scrim').classList.add('on'); }
+function closeSheet(){ delete $('#sheet').dataset.panel; $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); S.openId = null; }
 
 function openDetail(id, quiet){
   const ev = S.events.find(e => e.id === id); if(!ev) return;
@@ -1156,7 +1156,7 @@ function pushEnable(btn){
     toast('🔔 Notifications on');
     B.testPush().catch(e => toast('⚠️ ' + e.message));
   }).catch(e => toast('⚠️ ' + e.message))
-    .finally(() => { P.busy = false; render(); if($('#sheet').dataset.me) openMe(); });
+    .finally(() => { P.busy = false; render(); if($('#sheet').dataset.panel === 'me') openMe(); });
 }
 async function pushDisable(){
   const s = P.sub; P.sub = null;
@@ -1203,8 +1203,8 @@ function openMe(){
   h += B.mode === 'demo'
     ? `<div class="btns"><button class="btn danger" id="resetDemo">Reset demo</button></div>`
     : `<div class="btns"><button class="btn danger" id="signOut">Sign out on this phone</button></div>`;
-  const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.me ? $('#sheet').scrollTop : 0;
-  openSheet(h); $('#sheet').dataset.me = '1'; $('#sheet').scrollTop = keep;
+  const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'me' ? $('#sheet').scrollTop : 0;
+  openSheet(h); $('#sheet').dataset.panel = 'me'; $('#sheet').scrollTop = keep;
 }
 function openAddMember(){
   const st = {emoji:'👶', color:COLORS[S.members.length % COLORS.length]};
@@ -1367,7 +1367,7 @@ async function saveMyName(input){
   const name = input.value.trim().replace(/\s+/g, ' ');
   if(!name){ input.value = S.me.name; return; }
   if(name === S.me.name) return;
-  try{ await B.updateMe({name}); S.me.name = name; await refresh(); if($('#sheet').dataset.me) openMe(); toast('✓ Name saved'); }
+  try{ await B.updateMe({name}); S.me.name = name; await refresh(); if($('#sheet').dataset.panel === 'me') openMe(); toast('✓ Name saved'); }
   catch(e){ input.value = S.me.name; toast('⚠️ ' + e.message); }
 }
 document.addEventListener('change', e => { if(e.target.id === 'meName') saveMyName(e.target); });
