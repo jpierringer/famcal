@@ -420,7 +420,7 @@ main{padding:4px 16px 20px}
     <div class="hint" id="cHint"></div>
     <div class="pills" id="cPills"></div>
     <div class="quick" id="cQuick"></div>
-    <div id="cPriv" class="privnote hidden">🔒 Everyone sees this time as <b>Busy</b>. Only you see what it is.</div>
+    <div id="cPriv" class="privnote hidden">🔒 Everyone else just sees <b>Busy</b>. Only you and anyone you <b>@tag</b> can see what it is.</div>
     <div id="cItemsWrap" class="hidden">
       <div class="lbl" id="cItemsLbl">Items</div>
       <textarea class="ta" id="cItems" placeholder="Milk&#10;Eggs&#10;Bread (one per line, or commas)"></textarea>
@@ -606,7 +606,13 @@ const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, m
 let B; // backend
 const member = id => S.members.find(m => m.id === id);
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
-const hidden = ev => ev.kind === 'private' && ev.owner_id !== S.me?.id;
+const hidden = ev => ev.kind === 'private' && ev.owner_id !== S.me?.id && !(ev.invitees || []).includes(S.me?.id);
+const asksRsvp = ev => ev.kind === 'invite' || (ev.kind === 'private' && (ev.invitees || []).length > 0);
+function busyNames(ev){
+  const ids = [ev.owner_id, ...(ev.invitees || [])].filter((x,i,a) => a.indexOf(x) === i);
+  const names = ids.map(id => firstName(member(id)?.name)).filter(Boolean);
+  return { ids, text: names.length <= 1 ? `${names[0] || 'Someone'} is busy` : `${names.slice(0,-1).join(', ')} & ${names.at(-1)} are busy` };
+}
 const myRsvp = ev => S.rsvps.find(r => r.event_id===ev.id && r.member_id===S.me.id)?.status;
 const rsvpOf = (ev, mid) => S.rsvps.find(r => r.event_id===ev.id && r.member_id===mid)?.status;
 const itemsOf = id => S.items.filter(i => i.event_id === id).sort((a,b) => (a.done - b.done) || (a.position - b.position));
@@ -652,7 +658,7 @@ function LocalBackend(){
     async start(){ return db.meId; },
     async load(){
       return { family:db.family, members:db.members, meId:db.meId, privates:{},
-        events: db.events.map(e => e.kind==='private' && e.owner_id!==db.meId ? {...e, title:null, notes:null, place:null, sticker:null} : e),
+        events: db.events.map(e => e.kind==='private' && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId) ? {...e, title:null, notes:null, place:null, sticker:null} : e),
         items:db.items, rsvps:db.rsvps, reactions:db.reactions };
     },
     async saveEvent(ev){
@@ -914,22 +920,22 @@ function card(ev){
   const withDay = S.tab === 'lists';
   if(hidden(v)){
     return `<div class="card busy" style="--c:${esc(o.color)}"><div class="when">${esc(whenText(v, withDay))}</div>
-      <div class="ttl">🔒 ${esc(firstName(o.name))} is busy</div><div class="meta">${avatar(o,'sm')}<span>Private</span></div></div>`;
+      <div class="ttl">🔒 ${esc(busyNames(v).text)}</div><div class="meta"><span class="people">${busyNames(v).ids.map(id => avatar(member(id),'sm')).join('')}</span><span>Private</span></div></div>`;
   }
   let h = `<div class="card" style="--c:${esc(o.color)}" data-open="${v.id}">`;
   if(v.sticker) h += `<span class="sticker">${esc(v.sticker)}</span>`;
-  h += `<div class="when">${esc(whenText(v, withDay))}${v.kind==='private' ? ' · 🔒 only you' : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
+  h += `<div class="when">${esc(whenText(v, withDay))}${v.kind==='private' ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
   const meta = [];
   meta.push(avatar(o,'sm'));
   if(v.place) meta.push(`<span>📍 ${esc(v.place)}</span>`);
   if(v.invitees?.length){
-    meta.push(`<span class="people">${v.invitees.map(id => { const m = member(id); return m ? `<span class="av sm ${v.kind==='invite' ? (rsvpOf(v,id)||'') : ''}" style="--c:${esc(m.color)}">${esc(m.emoji)}</span>` : ''; }).join('')}</span>`);
+    meta.push(`<span class="people">${v.invitees.map(id => { const m = member(id); return m ? `<span class="av sm ${asksRsvp(v) ? (rsvpOf(v,id)||'') : ''}" style="--c:${esc(m.color)}">${esc(m.emoji)}</span>` : ''; }).join('')}</span>`);
   }
-  const mine = v.kind==='invite' && v.invitees?.includes(S.me.id) ? myRsvp(v) : null;
+  const mine = asksRsvp(v) && v.invitees?.includes(S.me.id) ? myRsvp(v) : null;
   if(mine) meta.push(`<span class="mine ${mine}">${mine==='yes' ? "You're in" : "Can't make it"}</span>`);
   if(v.kind === 'list'){ const it = itemsOf(v.id); meta.push(`<span class="progress">${it.filter(i=>i.done).length}/${it.length}</span>`); }
   h += `<div class="meta">${meta.join('')}</div>`;
-  if(v.kind==='invite' && v.invitees?.includes(S.me.id) && !mine && v.owner_id !== S.me.id){
+  if(asksRsvp(v) && v.invitees?.includes(S.me.id) && !mine && v.owner_id !== S.me.id){
     h += `<div class="rsvp"><button class="y" data-rsvp="yes" data-id="${v.id}">👍 I'm in</button><button data-rsvp="no" data-id="${v.id}">Can't</button></div>`;
   }
   if(v.kind === 'list') h += listHTML(v, cardMax);
@@ -954,7 +960,7 @@ function reactsHTML(v){
 function rowHTML(ev){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
   return `<div class="row" ${hid ? '' : `data-open="${v.id}"`} style="--c:${esc(o.color)}"><span class="bar"></span><span class="rs">${hid ? '🔒' : esc(v.sticker || '•')}</span>
-    <span class="rt"><b>${hid ? esc(firstName(o.name)) + ' is busy' : esc(v.title)}</b><small>${esc(dayLabel(v.starts_on))} · ${esc(fmtRange(v.start_time, v.end_time))}</small></span>${avatar(o,'sm')}</div>`;
+    <span class="rt"><b>${hid ? esc(busyNames(v).text) : esc(v.title)}</b><small>${esc(dayLabel(v.starts_on))} · ${esc(fmtRange(v.start_time, v.end_time))}</small></span>${avatar(o,'sm')}</div>`;
 }
 
 /* ========================= Detail sheet ========================= */
@@ -978,11 +984,11 @@ function openDetail(id, quiet){
   if(v.place) h += `<div class="drow"><span class="ic">📍</span><a href="https://maps.apple.com/?q=${encodeURIComponent(v.place)}" target="_blank" rel="noopener">${esc(v.place)}</a></div>`;
   h += `<div class="drow"><span class="ic">${avatar(o,'sm')}</span><span>Added by ${esc(mine ? 'you' : o.name)}</span></div>`;
   if(v.invitees?.length){
-    h += `<div class="drow" style="flex-wrap:wrap"><span class="ic">👥</span>${v.invitees.map(mid => { const m = member(mid); if(!m) return ''; const r = v.kind==='invite' ? rsvpOf(v, mid) : null;
-      return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px">${avatar(m,'sm')}${esc(firstName(m.name))}${r==='yes'?' ✅':r==='no'?' ❌':v.kind==='invite'?' ⏳':''}</span>`; }).join('')}</div>`;
+    h += `<div class="drow" style="flex-wrap:wrap"><span class="ic">👥</span>${v.invitees.map(mid => { const m = member(mid); if(!m) return ''; const r = asksRsvp(v) ? rsvpOf(v, mid) : null;
+      return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px">${avatar(m,'sm')}${esc(firstName(m.name))}${r==='yes'?' ✅':r==='no'?' ❌':asksRsvp(v)?' ⏳':''}</span>`; }).join('')}</div>`;
   }
   if(v.notes) h += `<div class="drow"><span class="ic">📝</span><span style="white-space:pre-wrap">${esc(v.notes)}</span></div>`;
-  if(v.kind==='invite' && v.invitees?.includes(S.me.id) && !mine){
+  if(asksRsvp(v) && v.invitees?.includes(S.me.id) && !mine){
     const r = myRsvp(v);
     h += `<div class="rsvp"><button class="${r==='yes'?'y':''}" data-rsvp="yes" data-id="${id}">👍 I'm in</button><button class="${r==='no'?'y':''}" style="${r==='no'?'background:var(--bad)':''}" data-rsvp="no" data-id="${id}">Can't</button></div>`;
   }
@@ -1044,7 +1050,7 @@ function draft(){
   const title = p.title || (kind==='list' && (p.items.length || extra.length) ? 'List' : '');
   const sticker = C.stickerManual ? C.sticker : autoSticker(title + ' ' + (p.place||''));
   const countdown = !!date && (C.cdManual ? C.countdown : COUNTDOWN_RE.test(title));
-  return { countdown, kind, title, date, start, end, people: kind==='private' ? [] : p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
+  return { countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
 }
 
 function updateComposer(){
@@ -1116,7 +1122,7 @@ async function saveComposer(){
     const saved = await B.saveEvent(ev);
     if(d.kind === 'list' && d.items.length) await B.addItems(saved.id, d.items);
     const wasEdit = C.editing; closeComposer();
-    if(d.kind !== 'private') B.notify(!wasEdit ? {type:'event', action:'created', event_id:saved.id, count:d.items.length}
+    if(d.kind !== 'private' || d.people.length) B.notify(!wasEdit ? {type:'event', action:'created', event_id:saved.id, count:d.items.length}
       : (d.kind === 'list' && d.items.length) ? {type:'items', event_id:saved.id, texts:d.items} : {type:'event', action:'updated', event_id:saved.id});
     if(d.date){ S.sel = d.date; S.tab = 'cal'; setTab('cal'); }
     else if(d.kind === 'list'){ setTab('lists'); }
