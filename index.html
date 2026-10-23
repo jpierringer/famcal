@@ -451,16 +451,22 @@ const APP_ICON = document.querySelector('link[rel=apple-touch-icon]').href;
 /* ========================= Constants ========================= */
 const COLORS = ['#ff6b4a','#3b82f6','#10b981','#a855f7','#f59e0b','#ec4899','#14b8a6','#6366f1'];
 const AVATARS = ['🧔','👩','👨','👱‍♀️','👧','👦','👶','👵','👴','🧑','🐶','🐱','🦊','🐻','🐼','🦄','🐸','🦖','🐙','🌻','⭐'];
-const STICKERS = ['🎉','⚽','🏀','🏈','⚾','🏓','🎂','🍕','🍔','🌮','🍽️','☕','🛒','🦷','🏥','💇','⛪','📖','📚','🎹','🎵','🎬','🎮','🏕️','✈️','🏖️','🚗','🎁','🎃','🎄','❤️','⭐','🔥','🐶','🧹','💼'];
+const STICKERS = ['🎉','⚽','🏀','🏈','⚾','🏓','⛳','🏊','💪','🎢','⛵','🐟','🐬','🐳','🎂','🍕','🍔','🌮','🍽️','☕','🛒','🛍️','🦷','🏥','💇','⛪','📖','📚','🎹','🎵','🎬','🎮','🏕️','✈️','🏖️','🚗','🎁','🎃','🎄','❤️','⭐','🔥','🐶','🧹','💼'];
 const REACT = ['❤️','😂','🎉','👍','🙏','🔥','😮','⭐','🙌','🥳','🍕','⚽'];
 const STICKER_KEYS = [
+  [/grocer|costco|walmart|aldi|meijer|pick ?n ?save|woodman|sam'?s club|food shopping/,'🛒'],[/shopping|\bmall\b|outlet|clothes|boutique|target|\bstore\b|back to school/,'🛍️'],
+  [/\bgolf/,'⛳'],[/\bswim|\bpool\b|swim lesson/,'🏊'],
+  [/\b(gym|work ?out|exercise|run|running|jog|yoga|crossfit|lift|lifting|fitness|pilates|spin class)\b/,'💪'],
+  [/\b(rides?|roller ?coaster|amusement|theme park|six flags|great america|carnival|water ?park)\b/,'🎢'],
+  [/\b(boat|boating|sail|sailing|kayak|canoe|pontoon|cruise)\b/,'⛵'],[/\b(fish|fishing|fish fry)\b/,'🐟'],
+  [/\bwhale/,'🐳'],[/\b(dolphin|aquarium|sea ?world)\b/,'🐬'],
   [/soccer|futbol/,'⚽'],[/basketball|hoops/,'🏀'],[/football/,'🏈'],[/baseball|softball|t-?ball/,'⚾'],
   [/pickleball|ping ?pong|table tennis/,'🏓'],[/birthday|bday/,'🎂'],[/pizza/,'🍕'],[/burger|bbq|barbecue|grill/,'🍔'],[/taco/,'🌮'],
-  [/grocer|shopping|costco|walmart|target|aldi|store/,'🛒'],[/dentist|teeth|ortho/,'🦷'],[/doctor|dr\.? |clinic|hospital|checkup|appt/,'🏥'],
+  [/dentist|teeth|ortho/,'🦷'],[/doctor|dr\.? |clinic|hospital|checkup|appt/,'🏥'],
   [/haircut|hair|barber/,'💇'],[/church|temple|ward|mass|youth group|service/,'⛪'],[/scripture|bible|devotional/,'📖'],
   [/homework|school|test|exam|class|conference/,'📚'],[/piano/,'🎹'],[/music|concert|choir|band|recital|lesson/,'🎵'],
   [/movie|film|cinema/,'🎬'],[/game night|video game|gaming|xbox|switch/,'🎮'],[/camp/,'🏕️'],[/flight|airport|trip|travel/,'✈️'],
-  [/beach|vacation|pool|swim/,'🏖️'],[/carpool|pick ?up|drop ?off|drive|oil change/,'🚗'],[/gift|present/,'🎁'],
+  [/beach|vacation/,'🏖️'],[/carpool|pick ?up|drop ?off|drive|oil change/,'🚗'],[/gift|present/,'🎁'],
   [/halloween|pumpkin|trick/,'🎃'],[/christmas|xmas/,'🎄'],[/date night|anniversary|date/,'❤️'],[/dog|vet|pet|cat/,'🐶'],
   [/clean|chores|laundry/,'🧹'],[/work|meeting|office/,'💼'],[/coffee/,'☕'],[/dinner|lunch|breakfast|brunch|meal/,'🍽️'],
   [/party|celebrat/,'🎉']
