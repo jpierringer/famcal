@@ -229,6 +229,16 @@ main{padding:4px 16px 20px}
 .namefield{position:relative;display:block}
 .namefield input{padding-right:40px;font-weight:700}
 .namefield span{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.6;pointer-events:none}
+/* ---------- Custom stickers ---------- */
+.stk button.fam{position:relative}
+.stk button.fam::after{content:"";position:absolute;right:4px;bottom:4px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.stkadd{font-size:24px!important;font-weight:300;color:var(--muted);border:2px dashed var(--line)!important;background:transparent}
+.stknew{margin:12px 0 4px;padding:14px;border-radius:18px;background:var(--card);box-shadow:var(--shadow)}
+.stknew-top{display:flex;gap:12px;align-items:flex-start}
+.stknew .field{margin-bottom:6px}
+.stkprev{flex:none;width:58px;height:58px;display:grid;place-items:center;font-size:38px;border-radius:16px;background:var(--soft);filter:grayscale(1);opacity:.4;transform:rotate(-6deg)}
+.stkprev.ok{filter:none;opacity:1;text-shadow:2px 0 #fff,-2px 0 #fff,0 2px #fff,0 -2px #fff}
+.fs{font-size:28px;width:40px;text-align:center}
 /* ---------- Countdowns ---------- */
 .cds{display:flex;gap:10px;overflow-x:auto;padding:12px 2px 6px;margin:-8px -2px 8px;scrollbar-width:none}
 .cds::-webkit-scrollbar{display:none}
@@ -427,6 +437,13 @@ main{padding:4px 16px 20px}
     </div>
     <div class="lbl">Sticker</div>
     <div class="stk" id="cStk"></div>
+    <div id="cStkNew" class="stknew hidden">
+      <div class="stknew-top"><span class="stkprev" id="nsPrev">😀</span>
+        <div style="flex:1"><input id="nsEmoji" class="field" placeholder="Pick any emoji" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="next">
+        <div class="hint" id="nsHint">Tap 😀 or 🌐 on your keyboard to switch to emoji.</div></div></div>
+      <input id="nsWords" class="field" placeholder="Auto-pick when I type… (optional) e.g. violin, orchestra" autocomplete="off" enterkeyhint="done">
+      <div class="btns" style="margin-top:4px"><button class="btn" id="nsCancel">Cancel</button><button class="btn primary" id="nsSave" disabled>Add for the family</button></div>
+    </div>
     <div id="cNotesWrap">
       <button class="linkish" id="cNotesBtn">+ Add a note</button>
       <textarea class="ta hidden" id="cNotes" placeholder="Details, links, what to bring…"></textarea>
@@ -506,7 +523,19 @@ function countdowns(){
   return S.events.filter(e => hasCountdown(e) && !hidden(e) && passesFilter(e)).map(view)
     .sort((a,b) => a.starts_on.localeCompare(b.starts_on));
 }
-function autoSticker(text){ const s = (text||'').toLowerCase(); for(const [re,e] of STICKER_KEYS) if(re.test(s)) return e; return null; }
+const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function autoSticker(text){
+  const s = (text||'').toLowerCase();
+  for(const c of (S.custom||[])) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) return c.emoji;
+  for(const [re,e] of STICKER_KEYS) if(re.test(s)) return e;
+  return null;
+}
+function firstEmoji(str){
+  str = (str||'').trim(); if(!str) return null;
+  const parts = window.Intl?.Segmenter ? [...new Intl.Segmenter(undefined, {granularity:'grapheme'}).segment(str)].map(x => x.segment) : Array.from(str);
+  return parts.find(g => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(g)) || null;
+}
+const cleanWords = str => [...new Set((str||'').split(/[,\n]/).map(w => w.trim().toLowerCase()).filter(w => w && w.length <= 30))].slice(0, 10);
 const firstName = n => (n||'').split(' ')[0];
 const avatar = (m, cls='') => m ? `<span class="av ${cls}" style="--c:${esc(m.color)}">${esc(m.emoji)}</span>` : '';
 
@@ -611,7 +640,7 @@ function parseQuick(raw, opts={}){
 }
 
 /* ========================= State ========================= */
-const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null };
+const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false };
 let B; // backend
 const member = id => S.members.find(m => m.id === id);
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
@@ -668,8 +697,10 @@ function LocalBackend(){
     async load(){
       return { family:db.family, members:db.members, meId:db.meId, privates:{},
         events: db.events.map(e => e.kind==='private' && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId) ? {...e, title:null, notes:null, place:null, sticker:null} : e),
-        items:db.items, rsvps:db.rsvps, reactions:db.reactions };
+        items:db.items, rsvps:db.rsvps, reactions:db.reactions, custom:db.custom||[] };
     },
+    async addSticker(c){ db.custom = db.custom||[]; if(!db.custom.some(x => x.emoji===c.emoji)) db.custom.push({id:uid(), ...c, created_at:new Date().toISOString()}); else Object.assign(db.custom.find(x => x.emoji===c.emoji), c); save(); },
+    async deleteSticker(id){ db.custom = (db.custom||[]).filter(x => x.id!==id); save(); },
     async saveEvent(ev){
       if(ev.id){ const i = db.events.findIndex(x => x.id===ev.id); db.events[i] = {...db.events[i], ...ev}; }
       else { ev = {...ev, id:uid(), family_id:db.family.id, owner_id:db.meId, created_at:new Date().toISOString()}; db.events.push(ev); }
@@ -721,11 +752,14 @@ function SupaBackend(){
         sb.from('event_private').select('*'),
       ]).then(rs => rs.map(ok));
       famId = fam?.id;
+      const cs = await sb.from('custom_stickers').select('*').order('created_at');   // optional table: app works without it
       const privates = {}; (privs||[]).forEach(p => privates[p.event_id] = p);
       return { family:fam, members, meId,
         events: events.map(e => ({...e, start_time:hhmm(e.start_time), end_time:hhmm(e.end_time), invitees:e.invitees||[]})),
-        items, rsvps, reactions, privates };
+        items, rsvps, reactions, privates, custom: cs.error ? [] : cs.data, customMissing: !!cs.error };
     },
+    async addSticker(c){ ok(await sb.from('custom_stickers').upsert({family_id:famId, created_by:meId, emoji:c.emoji, keywords:c.keywords}, {onConflict:'family_id,emoji'})); },
+    async deleteSticker(id){ ok(await sb.from('custom_stickers').delete().eq('id', id)); },
     async saveEvent(ev){
       const priv = ev.kind === 'private';
       const row = { kind:ev.kind, title:priv?null:ev.title, notes:priv?null:ev.notes, place:priv?null:ev.place, sticker:priv?null:ev.sticker,
@@ -765,7 +799,7 @@ function SupaBackend(){
     async testPush(){ const r = await sb.functions.invoke(PUSH_FN, {body:{type:'test'}}); if(r.error) throw new Error(await fnError(r.error)); return r.data; },
     subscribe(onChange){
       const ch = sb.channel('famcal-live');
-      ['events','event_private','list_items','rsvps','reactions','members','families'].forEach(t =>
+      ['events','event_private','list_items','rsvps','reactions','members','families','custom_stickers'].forEach(t =>
         ch.on('postgres_changes', {event:'*', schema:SCHEMA, table:t}, onChange));
       ch.subscribe();
       document.addEventListener('visibilitychange', () => { if(!document.hidden) onChange(); });
@@ -776,7 +810,8 @@ function SupaBackend(){
 /* ========================= Loading ========================= */
 async function refresh(){
   const d = await B.load();
-  Object.assign(S, { family:d.family, members:d.members, events:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates });
+  Object.assign(S, { family:d.family, members:d.members, events:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
+    custom:(d.custom||[]).map(c => ({...c, words:(c.keywords||'').split(',').map(w => w.trim()).filter(Boolean)})), customMissing:!!d.customMissing });
   S.me = member(d.meId);
   if(!S.me) throw new Error('not-member');
   render();
@@ -1042,7 +1077,7 @@ function openComposer(opts = {}){
   updateComposer(); autoGrow();
   setTimeout(() => { const t = $('#cText'); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 60);
 }
-function closeComposer(){ if(!$('#sheet').classList.contains('on')) $('#scrim').classList.remove('on'); $('#composer').classList.remove('on'); $('#composer').setAttribute('aria-hidden','true'); $('#cText').blur(); C = null; }
+function closeComposer(){ closeStickerAdd(); if(!$('#sheet').classList.contains('on')) $('#scrim').classList.remove('on'); $('#composer').classList.remove('on'); $('#composer').setAttribute('aria-hidden','true'); $('#cText').blur(); C = null; }
 
 function draft(){
   const p = parseQuick($('#cText').value, {kind:C.kind, noDateTime:C.editing});
@@ -1093,8 +1128,11 @@ function updateComposer(){
   $('#cItemsLbl').textContent = C.editing ? 'Add more items' : (d.items.length ? `Items (${d.items.length})` : 'Items');
   // stickers
   const auto = C.stickerManual ? null : d.sticker;
-  const list = d.sticker && !STICKERS.includes(d.sticker) ? [d.sticker, ...STICKERS] : STICKERS;
-  $('#cStk').innerHTML = list.map(s => `<button class="${s===d.sticker?'on':''} ${s===auto?'auto':''}" data-stk="${s}">${s}</button>`).join('');
+  const mine = (S.custom||[]).map(c => c.emoji);
+  const all = [...new Set([...mine, ...STICKERS])];
+  const list = d.sticker && !all.includes(d.sticker) ? [d.sticker, ...all] : all;
+  $('#cStk').innerHTML = list.map(s => `<button class="${s===d.sticker?'on':''} ${s===auto?'auto':''} ${mine.includes(s)?'fam':''}" data-stk="${s}">${s}</button>`).join('')
+    + `<button class="stkadd" id="cStkAdd" aria-label="Add your own sticker">＋</button>`;
   // suggestions
   renderSugg();
   $('#cSave').disabled = !(d.title || d.items.length);
@@ -1140,6 +1178,36 @@ async function saveComposer(){
     const el = document.querySelector(`[data-open="${saved.id}"] .sticker`); if(el){ el.classList.add('slap'); }
     if(wasEdit) closeSheet();
   }catch(e){ btn.disabled = false; toast('⚠️ ' + e.message); }
+}
+
+/* ========================= Custom stickers ========================= */
+function openStickerAdd(){
+  $('#cStkNew').classList.remove('hidden'); $('#nsEmoji').value = ''; $('#nsWords').value = '';
+  nsUpdate(); $('#nsEmoji').focus();
+  setTimeout(() => $('#cStkNew').scrollIntoView({block:'nearest', behavior:'smooth'}), 250);
+}
+function closeStickerAdd(){ $('#cStkNew').classList.add('hidden'); }
+function nsUpdate(){
+  const raw = $('#nsEmoji').value, e = firstEmoji(raw);
+  $('#nsPrev').textContent = e || '😀'; $('#nsPrev').classList.toggle('ok', !!e);
+  $('#nsHint').textContent = !raw ? 'Tap 😀 or 🌐 on your keyboard to switch to emoji.' : e ? (STICKERS.includes(e) && !S.custom.some(c => c.emoji === e) ? 'That one’s already in the picker. Add words to auto-pick it.' : 'Looks great!') : 'Emoji only, please.';
+  $('#nsSave').disabled = !e;
+}
+async function saveCustomSticker(){
+  const emoji = firstEmoji($('#nsEmoji').value); if(!emoji) return;
+  if(S.customMissing){ toast('⚠️ Run the latest schema.sql in Supabase to add stickers'); return; }
+  const words = cleanWords($('#nsWords').value);
+  $('#nsSave').disabled = true;
+  try{
+    await B.addSticker({emoji, keywords:words.join(', ')});
+    closeStickerAdd(); await refresh();
+    C.sticker = emoji; C.stickerManual = true; updateComposer();
+    toast(`${emoji} Added for the family${words.length ? ' · auto-picks “' + words[0] + '”' : ''}`);
+  }catch(e){ $('#nsSave').disabled = false; toast('⚠️ ' + e.message); }
+}
+function stickersSection(){
+  if(!S.custom.length) return `<p class="hint" style="margin:0 2px">Add your own with the ＋ at the end of the sticker picker when you create an event.</p>`;
+  return S.custom.map(c => `<div class="mrow"><span class="fs">${esc(c.emoji)}</span><span style="flex:1;color:var(--muted);font-weight:600">${c.words.length ? esc(c.words.join(', ')) : 'No auto-pick words'}</span><button class="pill" data-delstk="${c.id}" aria-label="Remove">✕</button></div>`).join('');
 }
 
 /* ========================= Actions ========================= */
@@ -1258,6 +1326,7 @@ function openMe(){
     <div class="lbl">Your avatar</div><div class="emojis">${AVATARS.map(a => `<button class="${a===me.emoji?'on':''}" data-meemoji="${a}">${a}</button>`).join('')}</div>
     <div class="lbl">Your color</div><div class="colors">${COLORS.map(c => `<button class="${c===me.color?'on':''}" style="--c:${c}" data-mecolor="${c}"></button>`).join('')}</div>
     <div class="lbl">Notifications</div>${pushSection()}
+    <div class="lbl">Family stickers</div>${stickersSection()}
     <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
     <div class="codebox"><b>${esc(S.family?.code || '')}</b><button class="pill" id="shareCode">Share</button></div>
     <div class="lbl">Family</div>
@@ -1380,6 +1449,9 @@ document.addEventListener('click', e => {
     if(d.stk){ const cur = draft().sticker; C.stickerManual = true; C.sticker = cur === d.stk ? null : d.stk; updateComposer(); return; }
     if(d.ins){ insertToken(d.ins); return; }
     if(t.id === 'cClearTime'){ C.mStart = null; C.mEnd = null; updateComposer(); return; }
+    if(t.id === 'cStkAdd'){ openStickerAdd(); return; }
+    if(t.id === 'nsCancel'){ closeStickerAdd(); return; }
+    if(t.id === 'nsSave'){ saveCustomSticker(); return; }
     if(t.id === 'cCountdown'){ C.countdown = !draft().countdown; C.cdManual = true; updateComposer(); return; }
     return;
   }
@@ -1399,6 +1471,9 @@ document.addEventListener('click', e => {
   if(d.cdtoggle){ const v = view(S.events.find(e => e.id === d.cdtoggle)); const on = !v.countdown;
     act(() => B.saveEvent({...v, countdown:on}), () => { S.events.find(e => e.id === d.cdtoggle).countdown = on; });
     toast(on ? `⏳ ${cdShort(daysUntil(v.starts_on))} to go!` : 'Countdown off'); return; }
+  if(d.delstk){ const c = S.custom.find(x => x.id === d.delstk);
+    if(c && confirm(`Remove ${c.emoji} from the family stickers? Events already using it keep it.`)) B.deleteSticker(c.id).then(refresh).then(() => { openMe(); toast('Sticker removed'); }).catch(e => toast('⚠️ ' + e.message));
+    return; }
   if(d.pushon !== undefined){ pushEnable(t); return; }
   if(d.pref){ pushToggle(d.pref); return; }
   if(d.nudgex !== undefined){ lsSet('famcal-nudge', '1'); render(); return; }
@@ -1420,6 +1495,9 @@ $('#cText').addEventListener('keyup', renderSugg);
 $('#cText').addEventListener('click', renderSugg);
 $('#cText').addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); saveComposer(); } });
 $('#cItems').addEventListener('input', updateComposer);
+$('#nsEmoji').addEventListener('input', nsUpdate);
+$('#nsEmoji').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#nsWords').focus(); } });
+$('#nsWords').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); saveCustomSticker(); } });
 $('#composer').addEventListener('change', e => {
   if(!C || !['cDate','cStart','cEnd'].includes(e.target.id)) return;   // typing in other boxes already updates live; re-rendering here would swallow taps
   if(e.target.id === 'cDate'){ C.mDate = e.target.value || null; }
