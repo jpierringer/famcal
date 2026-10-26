@@ -1504,8 +1504,23 @@ $('#composer').addEventListener('change', e => {
   if(e.target.id === 'cStart'){ const d = draft(); const old = d.start, oldEnd = d.end; C.mStart = e.target.value || null;
     C.mEnd = (old && oldEnd && C.mStart) ? shiftEnd(old, oldEnd, C.mStart) : (oldEnd && C.mStart && oldEnd > C.mStart ? oldEnd : null); }
   if(e.target.id === 'cEnd'){ const d = draft(); if(C.mStart === undefined) C.mStart = d.start; C.mEnd = e.target.value || null; }
-  updateComposer();
+  // While a date/time picker is open, never rebuild it (iPhone fires "change" the moment an empty picker opens,
+  // and rebuilding would close it). Just refresh the pill's label; rebuild once the picker closes.
+  if(document.activeElement === e.target){ refreshPickerLabel(e.target); C.pendingRender = true; }
+  else updateComposer();
 });
+$('#composer').addEventListener('focusout', e => {
+  if(!C || !C.pendingRender || !['cDate','cStart','cEnd'].includes(e.target.id)) return;
+  C.pendingRender = false; setTimeout(() => { if(C) updateComposer(); }, 0);
+});
+function refreshPickerLabel(input){
+  const d = draft(), lbl = input.closest('label'); if(!lbl) return;
+  const text = input.id === 'cDate' ? '📅 ' + (d.date ? (d.date===todayStr() ? 'Today' : d.date===addDays(todayStr(),1) ? 'Tomorrow' : shortDate(d.date)) : 'No date')
+             : input.id === 'cStart' ? '🕒 ' + (d.start ? fmtTime(d.start) : 'All day')
+             : (d.end ? 'until ' + fmtTime(d.end) : '+ end');
+  if(lbl.firstChild && lbl.firstChild.nodeType === 3) lbl.firstChild.textContent = text + ' ';
+  lbl.classList.toggle('off', input.id === 'cEnd' ? !d.end : input.id === 'cStart' ? !d.start : !d.date);
+}
 function shiftEnd(os, oe, ns){ const mins = s => +s.slice(0,2)*60 + +s.slice(3,5); const n = Math.min(mins(ns) + mins(oe) - mins(os), 23*60+59); return pad(Math.floor(n/60)) + ':' + pad(n%60); }
 function step(dir){ S.sel = addDays(S.sel, (isWide() && S.tab==='cal' ? 7 : 1) * dir); if(S.tab !== 'cal') setTab('cal'); else render(); }
 async function saveMyName(input){
