@@ -182,7 +182,7 @@ main{padding:4px 16px 20px}
 .pills{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
 .p{position:relative;display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);font-weight:700;font-size:15px}
 .p.off{color:var(--muted);font-weight:600;box-shadow:none;border:1.5px dashed var(--line);background:transparent}
-.p input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
+.p input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .p .clr{margin-left:2px;color:var(--muted);position:relative;z-index:2;padding:0 2px}
 .quick{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
@@ -571,12 +571,18 @@ function parseDate(h, r){
     [/\s(?:on\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/, m => mkDate(m[3], +m[1]-1, +m[2])],
     [/\s(?:on\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sept|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?/i, m => mkDate(null, MON[m[1].toLowerCase()], +m[2])],
   ];
+  // Use the LAST date phrase typed, so a title like "Sunday school Sun 9am" keeps "Sunday school"
+  let best = null;
   for(const [re, fn] of rules){
-    const rx = new RegExp(re.source + END, re.flags);
-    const m = h.match(rx);
-    if(m){ const d = fn(m); if(d){ r.date = d; return h.replace(m[0], ' '); } }
+    for(const m of h.matchAll(new RegExp(re.source + END, re.flags + 'g'))){
+      const d = fn(m); if(!d) continue;
+      const end = m.index + m[0].length;
+      if(!best || end > best.end || (end === best.end && m[0].length > best.len)) best = {d, idx:m.index, len:m[0].length, end};
+    }
   }
-  return h;
+  if(!best) return h;
+  r.date = best.d;
+  return h.slice(0, best.idx) + ' ' + h.slice(best.end);
 }
 function mkDate(y, mo, d){
   if(mo<0||mo>11||d<1||d>31) return null;
@@ -630,7 +636,8 @@ function parseQuick(raw, opts={}){
     if(mm){ if(!r.people.includes(mm.id)) r.people.push(mm.id); return ' '; }
     return m;
   });
-  if(!opts.noDateTime){ h = parseDate(h, r); h = parseTime(h, r); }
+  if(!opts.noDateTime && !opts.noDate) h = parseDate(h, r);
+  if(!opts.noDateTime && !opts.noTime) h = parseTime(h, r);
   const pm = h.match(/#([^@#]+)/);
   if(pm){ r.place = pm[1].trim().replace(/[,.;]+$/,'') || null; h = h.replace(pm[0], ' '); }
   let t = h.replace(/\s+/g,' ').trim();
@@ -1070,7 +1077,7 @@ function openComposer(opts = {}){
     const ppl = (ev.invitees||[]).map(id => '@' + firstName(member(id)?.name)).filter(x => x !== '@').join(' ');
     text = [ev.title, ppl, ev.place ? '#' + ev.place : ''].filter(Boolean).join(' ');
   }
-  $('#cText').value = text; $('#cItems').value = ''; $('#cNotes').value = ev?.notes || '';
+  $('#cText').value = text; C.origDT = ev ? parseQuick(text) : null; $('#cItems').value = ''; $('#cNotes').value = ev?.notes || '';
   $('#cNotes').classList.toggle('hidden', !ev?.notes); $('#cNotesBtn').classList.toggle('hidden', !!ev?.notes);
   $('#cTitle').textContent = ev ? 'Edit' : 'New'; $('#cSave').textContent = ev ? 'Save' : 'Add';
   $('#composer').classList.add('on'); $('#composer').setAttribute('aria-hidden','false'); if(isDesk()) $('#scrim').classList.add('on');
@@ -1080,7 +1087,18 @@ function openComposer(opts = {}){
 function closeComposer(){ closeStickerAdd(); if(!$('#sheet').classList.contains('on')) $('#scrim').classList.remove('on'); $('#composer').classList.remove('on'); $('#composer').setAttribute('aria-hidden','true'); $('#cText').blur(); C = null; }
 
 function draft(){
-  const p = parseQuick($('#cText').value, {kind:C.kind, noDateTime:C.editing});
+  const text = $('#cText').value;
+  let p;
+  if(C.editing){
+    // Editing: words already in the title (e.g. "Sunday school") must not move the event,
+    // but a day or time the person types now should be picked up.
+    const a = parseQuick(text, {kind:C.kind}), o = C.origDT || {};
+    const useDate = !!a.date && a.date !== o.date;
+    const useTime = !!a.start && (a.start !== o.start || a.end !== o.end);
+    p = parseQuick(text, {kind:C.kind, noDate:!useDate, noTime:!useTime});
+    if(useDate && C.mDate !== undefined) C.mDate = undefined;                       // newest input wins
+    if(useTime && C.mStart !== undefined){ C.mStart = undefined; C.mEnd = undefined; }
+  } else p = parseQuick(text, {kind:C.kind});
   let kind = C.kind;
   if(!C.kindManual) kind = p.listLike ? 'list' : p.people.length ? 'invite' : 'info';
   const extra = $('#cItems').value.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
@@ -1102,7 +1120,7 @@ function updateComposer(){
   const d = draft(), K = KINDS.find(k => k.k === d.kind);
   $('#cKinds').innerHTML = KINDS.map(k => `<button class="${k.k===d.kind?'on':''}" data-kind="${k.k}"><b>${k.ic}</b>${k.name}</button>`).join('');
   $('#cText').placeholder = K.ph;
-  $('#cHint').innerHTML = C.editing ? 'Change the date and time with the buttons below.' :
+  $('#cHint').innerHTML = C.editing ? 'Type a new day or time (like <code>Sat 3pm</code>), or tap the buttons below.' :
     d.kind==='invite' ? 'Tag people with <code>@Name</code> (or <code>@everyone</code>) and a place with <code>#</code>.' :
     d.kind==='list' ? 'Type <code>Title: item, item</code> or add items below.' :
     'Type naturally: <code>Fri 6pm</code>, <code>tomorrow 3-4pm</code>, <code>#Place</code>, <code>@Name</code>';
@@ -1508,6 +1526,15 @@ $('#composer').addEventListener('change', e => {
   // and rebuilding would close it). Just refresh the pill's label; rebuild once the picker closes.
   if(document.activeElement === e.target){ refreshPickerLabel(e.target); C.pendingRender = true; }
   else updateComposer();
+});
+$('#composer').addEventListener('click', e => {
+  const lbl = e.target.closest('#cPills label.p'); if(!lbl) return;
+  const inp = lbl.querySelector('input'); if(!inp) return;
+  // Phones open the picker on tap by themselves; mouse/trackpad browsers need showPicker()
+  if(matchMedia('(pointer:fine)').matches && typeof inp.showPicker === 'function'){
+    e.preventDefault(); inp.focus({preventScroll:true});
+    try{ inp.showPicker(); }catch(err){}
+  }
 });
 $('#composer').addEventListener('focusout', e => {
   if(!C || !C.pendingRender || !['cDate','cStart','cEnd'].includes(e.target.id)) return;
