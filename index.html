@@ -651,7 +651,8 @@ const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, m
 let B; // backend
 const member = id => S.members.find(m => m.id === id);
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
-const hidden = ev => ev.kind === 'private' && ev.owner_id !== S.me?.id && !(ev.invitees || []).includes(S.me?.id);
+const isSecret = ev => ev.kind === 'private' || !!ev.is_private;
+const hidden = ev => isSecret(ev) && ev.owner_id !== S.me?.id && !(ev.invitees || []).includes(S.me?.id);
 const asksRsvp = ev => ev.kind === 'invite' || (ev.kind === 'private' && (ev.invitees || []).length > 0);
 function busyNames(ev){
   const ids = [ev.owner_id, ...(ev.invitees || [])].filter((x,i,a) => a.indexOf(x) === i);
@@ -703,8 +704,9 @@ function LocalBackend(){
     async start(){ return db.meId; },
     async load(){
       return { family:db.family, members:db.members, meId:db.meId, privates:{},
-        events: db.events.map(e => e.kind==='private' && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId) ? {...e, title:null, notes:null, place:null, sticker:null} : e),
-        items:db.items, rsvps:db.rsvps, reactions:db.reactions, custom:db.custom||[] };
+        events: db.events.filter(e => !(e.is_private && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId)))
+          .map(e => e.kind==='private' && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId) ? {...e, title:null, notes:null, place:null, sticker:null} : e),
+        items:db.items.filter(i => { const e = db.events.find(x => x.id === i.event_id); return !(e && e.is_private && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId)); }), rsvps:db.rsvps, reactions:db.reactions, custom:db.custom||[] };
     },
     async addSticker(c){ db.custom = db.custom||[]; if(!db.custom.some(x => x.emoji===c.emoji)) db.custom.push({id:uid(), ...c, created_at:new Date().toISOString()}); else Object.assign(db.custom.find(x => x.emoji===c.emoji), c); save(); },
     async deleteSticker(id){ db.custom = (db.custom||[]).filter(x => x.id!==id); save(); },
@@ -768,12 +770,13 @@ function SupaBackend(){
     async addSticker(c){ ok(await sb.from('custom_stickers').upsert({family_id:famId, created_by:meId, emoji:c.emoji, keywords:c.keywords}, {onConflict:'family_id,emoji'})); },
     async deleteSticker(id){ ok(await sb.from('custom_stickers').delete().eq('id', id)); },
     async saveEvent(ev){
-      const priv = ev.kind === 'private';
+      const priv = ev.kind === 'private' || !!ev.is_private;
       const row = { kind:ev.kind, title:priv?null:ev.title, notes:priv?null:ev.notes, place:priv?null:ev.place, sticker:priv?null:ev.sticker,
-        starts_on:ev.starts_on, start_time:ev.start_time, end_time:ev.end_time, invitees:ev.invitees||[], countdown:!!ev.countdown, updated_at:new Date().toISOString() };
+        starts_on:ev.starts_on, start_time:ev.start_time, end_time:ev.end_time, invitees:ev.invitees||[], countdown:!!ev.countdown, ...(ev.is_private ? {is_private:true} : (ev.id ? {is_private:false} : {})), updated_at:new Date().toISOString() };
       let id = ev.id;
       const write = r => id ? sb.from('events').update(r).eq('id', id) : sb.from('events').insert({...r, family_id:famId, owner_id:meId}).select('id').single();
       let res = await write(row);
+      if(res.error && /is_private|private_has_no_details/.test(res.error.message)) throw new Error('Run the latest schema.sql in Supabase to use private lists');
       if(res.error && /countdown/.test(res.error.message)){   // database not updated yet: save without it
         const {countdown, ...rest} = row; res = await write(rest);
         toast('⚠️ Run the latest schema.sql in Supabase to save countdowns');
@@ -853,7 +856,7 @@ function renderSide(){
                  isWide() && S.tab==='cal' && d >= ws && d <= we ? 'inwk' : ''].join(' ');
     mini += `<button class="${cls}" data-day="${d}">${dt.getDate()}${dayEvents(d).length ? '<i></i>' : ''}</button>`;
   }
-  const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(t,-7)))
+  const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(t,-7))).map(view)
     .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
   el.innerHTML = `
     <div class="brand"><img src="${APP_ICON}" alt=""><b>${esc(S.family?.name || 'Family')}</b><button data-me aria-label="Me and family">${avatar(S.me)}</button></div>
@@ -902,7 +905,7 @@ function renderMain(){
     h += pushNudge();
     if(S.sel === todayStr()) h += countdownStrip();
     if(S.sel === todayStr()){
-      const pins = S.events.filter(e => e.kind==='list' && !e.starts_on && passesFilter(e));
+      const pins = S.events.filter(e => e.kind==='list' && !e.starts_on && passesFilter(e)).map(view);
       if(pins.length) h += `<div class="pinned">${pins.map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
         return `<button class="pin" data-open="${e.id}">${esc(e.sticker||'☑️')} ${esc(e.title)} <small>${left ? left+' left' : 'done ✓'}</small></button>`; }).join('')}</div>`;
     }
@@ -975,7 +978,7 @@ function card(ev){
   }
   let h = `<div class="card" style="--c:${esc(o.color)}" data-open="${v.id}">`;
   if(v.sticker) h += `<span class="sticker">${esc(v.sticker)}</span>`;
-  h += `<div class="when">${esc(whenText(v, withDay))}${v.kind==='private' ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
+  h += `<div class="when">${esc(whenText(v, withDay))}${isSecret(v) ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
   const meta = [];
   meta.push(avatar(o,'sm'));
   if(v.place) meta.push(`<span>📍 ${esc(v.place)}</span>`);
@@ -1070,7 +1073,7 @@ function openComposer(opts = {}){
   C = { id: ev?.id || null, editing: !!ev, kind: ev?.kind || opts.kind || 'info', kindManual: !!ev || !!opts.kind,
         mDate: undefined, mStart: undefined, mEnd: undefined,
         bDate: ev ? ev.starts_on : S.sel, bStart: ev?.start_time || null, bEnd: ev?.end_time || null,
-        sticker: ev?.sticker || null, stickerManual: !!ev, countdown: !!ev?.countdown, cdManual: !!ev, };
+        sticker: ev?.sticker || null, stickerManual: !!ev, countdown: !!ev?.countdown, cdManual: !!ev, listPrivate: !!ev?.is_private, };
   if(S.tab === 'lists' && !ev && !opts.text) { C.kind = 'list'; C.kindManual = true; }
   let text = opts.text || '';
   if(ev){
@@ -1112,7 +1115,8 @@ function draft(){
   const title = p.title || (kind==='list' && (p.items.length || extra.length) ? 'List' : '');
   const sticker = C.stickerManual ? C.sticker : autoSticker(title + ' ' + (p.place||''));
   const countdown = !!date && (C.cdManual ? C.countdown : COUNTDOWN_RE.test(title));
-  return { countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
+  const isPrivate = kind === 'list' && !!C.listPrivate;
+  return { isPrivate, countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
 }
 
 function updateComposer(){
@@ -1132,6 +1136,7 @@ function updateComposer(){
     if(d.start) p += `<label class="p ${d.end?'':'off'}">${d.end ? 'until ' + esc(fmtTime(d.end)) : '+ end'}<input type="time" id="cEnd" value="${d.end||''}" step="300"></label>`;
     if(d.start) p += `<button class="p off" id="cClearTime">✕ time</button>`;
   }
+  if(d.kind === 'list') p += `<button class="p ${d.isPrivate ? 'cdp' : 'off'}" id="cListPriv">🔒 ${d.isPrivate ? 'Private list' : 'Private'}</button>`;
   if(d.date) p += `<button class="p ${d.countdown ? 'cdp' : 'off'}" id="cCountdown">⏳ ${d.countdown ? (daysUntil(d.date) >= 0 ? cdShort(daysUntil(d.date)) + ' to go' : 'Countdown') : 'Countdown'}</button>`;
   if(d.place) p += `<span class="p">📍 ${esc(d.place)}</span>`;
   if(d.people.length) p += `<span class="p">${d.people.map(id => avatar(member(id),'sm')).join('')} ${d.people.length===S.members.length ? 'Everyone' : d.people.map(id => esc(firstName(member(id)?.name))).join(', ')}</span>`;
@@ -1141,7 +1146,10 @@ function updateComposer(){
   for(let i=2;i<7;i++){ const dd = addDays(t,i); q.push([dd, parseYmd(dd).toLocaleDateString(undefined,{weekday:'short'})]); }
   $('#cQuick').innerHTML = (d.kind==='list' ? `<button class="${!d.date?'on':''}" data-qd="">No date</button>` : '') + q.map(([dd,l]) => `<button class="${d.date===dd?'on':''}" data-qd="${dd}">${l}</button>`).join('');
   // private + items
-  $('#cPriv').classList.toggle('hidden', d.kind !== 'private');
+  $('#cPriv').classList.toggle('hidden', !(d.kind === 'private' || d.isPrivate));
+  $('#cPriv').innerHTML = d.isPrivate
+    ? `🔒 Only you${d.people.length ? ' and ' + d.people.map(id => esc(firstName(member(id)?.name))).join(', ') : ''} can see this list. <b>@tag</b> people to share it with them.`
+    : '🔒 Everyone else just sees <b>Busy</b>. Only you and anyone you <b>@tag</b> can see what it is.';
   $('#cItemsWrap').classList.toggle('hidden', d.kind !== 'list');
   $('#cItemsLbl').textContent = C.editing ? 'Add more items' : (d.items.length ? `Items (${d.items.length})` : 'Items');
   // stickers
@@ -1181,7 +1189,7 @@ async function saveComposer(){
   const d = draft();
   if(!(d.title || d.items.length)){ $('#cText').classList.add('shake'); setTimeout(() => $('#cText').classList.remove('shake'), 500); return; }
   const btn = $('#cSave'); btn.disabled = true;
-  const ev = { id:C.id || undefined, countdown:d.countdown, kind:d.kind, title:d.title || 'Untitled', notes:d.notes, place:d.place || null, starts_on:d.date,
+  const ev = { id:C.id || undefined, is_private:d.isPrivate, countdown:d.countdown, kind:d.kind, title:d.title || 'Untitled', notes:d.notes, place:d.place || null, starts_on:d.date,
     start_time:d.start, end_time:d.end, sticker:d.sticker || null, invitees:d.people };
   try{
     const saved = await B.saveEvent(ev);
@@ -1470,6 +1478,7 @@ document.addEventListener('click', e => {
     if(t.id === 'cStkAdd'){ openStickerAdd(); return; }
     if(t.id === 'nsCancel'){ closeStickerAdd(); return; }
     if(t.id === 'nsSave'){ saveCustomSticker(); return; }
+    if(t.id === 'cListPriv'){ C.listPrivate = !C.listPrivate; updateComposer(); return; }
     if(t.id === 'cCountdown'){ C.countdown = !draft().countdown; C.cdManual = true; updateComposer(); return; }
     return;
   }
