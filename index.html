@@ -106,7 +106,22 @@ main{padding:4px 16px 20px}
 .mine{font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px}
 .mine.yes{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
 .mine.no{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
-.reacts{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.reacts{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:9px}
+.rc{display:inline-flex;align-items:center;gap:4px;font-size:16px;line-height:1;padding:4px 9px 4px 7px;border-radius:999px;background:var(--soft);transition:transform .15s}
+.rc i{font-style:normal;font-size:12px;display:inline-flex;letter-spacing:-2px}
+.rc.me{background:color-mix(in srgb,var(--accent) 12%,var(--card));box-shadow:0 0 0 1.5px var(--accent) inset}
+.rc:active,.rtray button:active{transform:scale(.85)}
+.rc.pop{animation:reactpop .55s cubic-bezier(.2,.9,.3,1.5)}
+@keyframes reactpop{0%{transform:scale(.3)}60%{transform:scale(1.25)}100%{transform:none}}
+.addr{font-size:13px;font-weight:800;padding:4px 10px;border-radius:999px;border:1.5px dashed var(--line);color:var(--muted)}
+.addr.on{border-style:solid;color:var(--ink)}
+.rtray{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding:6px;border-radius:16px;background:var(--soft);animation:trayin .18s ease-out}
+.rtray button{font-size:24px;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;transition:transform .12s}
+.rtray button:hover{background:var(--card);transform:scale(1.15) rotate(-8deg)}
+@keyframes trayin{from{opacity:0;transform:translateY(-4px)}}
+.card button.sticker{pointer-events:auto;cursor:pointer;background:none;border:0;padding:0;z-index:2;transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
+.card button.sticker:hover{transform:rotate(-6deg) scale(1.15)}
+.card button.sticker:active{transform:rotate(-14deg) scale(1.35)}
 .reacts span{font-size:13px;padding:2px 7px;border-radius:999px;background:var(--soft)}
 .reacts span.me{box-shadow:0 0 0 1.5px var(--accent) inset}
 
@@ -185,6 +200,20 @@ main{padding:4px 16px 20px}
 .save:disabled{opacity:.35}
 .cbody{flex:1;overflow:auto;padding:4px 16px calc(30px + var(--safe-b))}
 .kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--soft);padding:4px;border-radius:14px}
+.kindline{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin:2px 0 0}
+.kchip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;font-weight:800;font-size:14px;background:var(--card);box-shadow:var(--shadow)}
+.kchip b{font-size:17px}
+.kchip .car{color:var(--muted);font-size:11px;margin-left:1px}
+.kchip.k-invite{color:#2563eb}.kchip.k-private{color:#b45309}.kchip.k-list{color:#059669}
+.kindline .why{font-size:13.5px;font-weight:600;color:var(--muted)}
+.kmenu{flex-basis:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.kmenu button{display:flex;align-items:center;gap:8px;text-align:left;padding:9px 10px;border-radius:14px;background:var(--card);box-shadow:var(--shadow)}
+.kmenu button b{font-size:20px}
+.kmenu button span{display:flex;flex-direction:column;min-width:0}
+.kmenu strong{font-size:14px}
+.kmenu small{font-size:12px;color:var(--muted);font-weight:600}
+.kmenu button.on{box-shadow:0 0 0 2px var(--accent) inset,var(--shadow)}
+.kmenu button.auto{grid-column:1 / -1;background:transparent;box-shadow:none;border:1.5px dashed var(--line)}
 .kinds button{padding:8px 0;border-radius:11px;font-size:13px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:1px}
 .kinds button b{font-size:18px}
 .kinds button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
@@ -567,7 +596,7 @@ main{padding:4px 16px 20px}
     <button class="save" id="cSave" disabled>Add</button>
   </div>
   <div class="cbody">
-    <div class="kinds" id="cKinds"></div>
+    <div class="kindline" id="cKinds"></div>
     <div class="titlerow">
       <div class="hlwrap"><div class="hl big" id="cHl" aria-hidden="true"></div><textarea class="big" id="cText" rows="1" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></textarea></div>
       <button class="livestk empty" id="cLive" aria-label="Choose a sticker"><span>🙂</span></button>
@@ -666,6 +695,13 @@ function fmtTime(t){ if(!t) return ''; let [h,m] = t.split(':').map(Number); con
 function fmtRange(s,e){ if(!s) return 'All day'; if(!e) return fmtTime(s); const a=fmtTime(s), b=fmtTime(e); return (a.slice(-2)===b.slice(-2) ? a.slice(0,-2) : a) + '–' + b; }
 function dayLabel(s){ const t = todayStr(); if(s===t) return 'Today'; if(s===addDays(t,1)) return 'Tomorrow'; if(s===addDays(t,-1)) return 'Yesterday'; return parseYmd(s).toLocaleDateString(undefined,{weekday:'long'}); }
 const shortDate = s => parseYmd(s).toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+// Never ambiguous: "Today", "Tomorrow", otherwise the date ("Thu, Dec 3"; year added when it isn't this year)
+function dateLabel(s){
+  const t = todayStr(); if(s === t) return 'Today'; if(s === addDays(t, 1)) return 'Tomorrow'; if(s === addDays(t, -1)) return 'Yesterday';
+  const d = parseYmd(s), o = {weekday:'short', month:'short', day:'numeric'};
+  if(d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+  return d.toLocaleDateString(undefined, o);
+}
 const plusHour = t => { let [h,m] = t.split(':').map(Number); h = Math.min(h+1, 23); return pad(h)+':'+pad(m); };
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),1800); }
 const COUNTDOWN_RE = /vacation|trip|wedding|baby|due date|birthday|bday|graduat|cruise|disney|anniversary|christmas|xmas|concert|holiday|reunion|honeymoon|retire|camp/i;
@@ -1229,7 +1265,7 @@ function card(ev){
       <div class="ttl">🔒 ${esc(busyNames(v).text)}</div><div class="meta"><span class="people">${busyNames(v).ids.map(id => avatar(member(id),'sm')).join('')}</span><span>Private</span></div></div>`;
   }
   let h = `<div class="card" style="--c:${esc(o.color)}" data-open="${v.id}">`;
-  { const st = v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`); if(st) h += `<span class="sticker">${esc(st)}</span>`; }
+  { const st = v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`); if(st) h += `<button class="sticker" data-react="${esc(st)}" data-id="${v.id}" title="React with ${esc(st)}" aria-label="React with ${esc(st)}">${esc(st)}</button>`; }
   h += `<div class="when">${esc(whenText(v, withDay))}${isSecret(v) ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
   const meta = [];
   meta.push(avatar(o,'sm'));
@@ -1245,7 +1281,7 @@ function card(ev){
     h += `<div class="rsvp"><button class="y" data-rsvp="yes" data-id="${v.id}">👍 I'm in</button><button data-rsvp="no" data-id="${v.id}">Can't</button></div>`;
   }
   if(v.kind === 'list') h += listHTML(v, cardMax);
-  h += reactsHTML(v);
+  h += reactsHTML(v, true);
   return h + `</div>`;
 }
 
@@ -1257,16 +1293,26 @@ function listHTML(v, max){
   return h;
 }
 
-function reactsHTML(v){
-  const rs = S.reactions.filter(r => r.event_id === v.id); if(!rs.length) return '';
-  const g = {}; rs.forEach(r => { g[r.sticker] = g[r.sticker] || {n:0, me:false}; g[r.sticker].n++; if(r.member_id===S.me.id) g[r.sticker].me = true; });
-  return `<div class="reacts">${Object.entries(g).map(([s,x]) => `<span class="${x.me?'me':''}">${s}${x.n>1?' '+x.n:''}</span>`).join('')}</div>`;
+function reactsHTML(v, onCard){
+  const rs = S.reactions.filter(r => r.event_id === v.id);
+  if(!rs.length && !onCard) return '';
+  const g = {}; rs.forEach(r => { (g[r.sticker] = g[r.sticker] || {who:[], me:false}).who.push(r.member_id); if(r.member_id === S.me.id) g[r.sticker].me = true; });
+  const chips = Object.entries(g).map(([st, x]) => {
+    const people = x.who.map(member).filter(Boolean);
+    const faces = people.slice(0, 3).map(m => esc(m.emoji)).join('') + (people.length > 3 ? `+${people.length - 3}` : '');
+    const pop = S.lastReact === v.id + ':' + st ? ' pop' : '';
+    return `<button class="rc${x.me ? ' me' : ''}${pop}" data-react="${esc(st)}" data-id="${v.id}" title="${esc(people.map(m => firstName(m.name)).join(', '))}">${esc(st)}<i>${faces}</i></button>`;
+  }).join('');
+  if(!onCard) return `<div class="reacts">${chips}</div>`;
+  const open = S.reactOpen === v.id;
+  return `<div class="reacts">${chips}<button class="addr${open ? ' on' : ''}" data-reactpick="${v.id}" aria-label="Add a reaction">${open ? '✕' : '＋😀'}</button></div>`
+    + (open ? `<div class="rtray">${REACT.map(st => `<button data-react="${st}" data-id="${v.id}">${st}</button>`).join('')}</div>` : '');
 }
 
 function rowHTML(ev){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
   return `<div class="row" ${hid ? '' : `data-open="${v.id}"`} style="--c:${esc(o.color)}"><span class="bar"></span><span class="rs">${hid ? '🔒' : esc(stickerOf(v))}</span>
-    <span class="rt"><b>${hid ? esc(busyNames(v).text) : esc(v.title)}</b><small>${esc(dayLabel(v.starts_on))} · ${esc(fmtRange(v.start_time, v.end_time))}</small></span>${avatar(o,'sm')}</div>`;
+    <span class="rt"><b>${hid ? esc(busyNames(v).text) : esc(v.title)}</b><small>${esc(dateLabel(v.starts_on))} · ${esc(fmtRange(v.start_time, v.end_time))}</small></span>${avatar(o,'sm')}</div>`;
 }
 
 /* ========================= Detail sheet ========================= */
@@ -1332,7 +1378,7 @@ function openComposer(opts = {}){
     const ppl = (ev.invitees||[]).map(id => '@' + firstName(member(id)?.name)).filter(x => x !== '@').join(' ');
     text = [ev.title, ppl, ev.place ? '#' + ev.place : ''].filter(Boolean).join(' ');
   }
-  $('#cText').value = text; C.origDT = ev ? parseQuick(text) : null; C.whenOpen = false; C.hlSeen = new Set(); C.liveLast = undefined;
+  $('#cText').value = text; C.origDT = ev ? parseQuick(text) : null; C.whenOpen = false; C.kindMenu = false; C.hlSeen = new Set(); C.liveLast = undefined;
   $('#cStkAll').classList.add('hidden'); document.querySelectorAll('#cHelpers .hb').forEach(b => b.classList.remove('on')); $('#cItems').value = ''; $('#cNotes').value = ev?.notes || '';
   $('#cNotes').classList.toggle('hidden', !ev?.notes); $('#cNotesBtn').classList.toggle('hidden', !!ev?.notes);
   $('#cTitle').textContent = ev ? 'Edit' : 'New'; $('#cSave').textContent = ev ? 'Save' : 'Add';
@@ -1375,7 +1421,7 @@ function draft(){
 function updateComposer(){
   if(!C) return;
   const d = draft(), K = KINDS.find(k => k.k === d.kind);
-  $('#cKinds').innerHTML = KINDS.map(k => `<button class="${k.k===d.kind?'on':''}" data-kind="${k.k}"><b>${k.ic}</b>${k.name}</button>`).join('');
+  renderKindLine(d);
   $('#cText').placeholder = K.ph;
   const typed = $('#cText').value.trim().length > 0;
   $('#cHint').innerHTML = C.editing ? 'Type a new day or time, like <b>Sat 3pm</b>. Words light up when I understand them.' :
@@ -1522,6 +1568,31 @@ function whenChips(){
     + times.map(v => `<button class="whenchip" data-when="${v}" data-wt="time">🕒 ${v}</button>`).join('');
 }
 
+// ---------- the event type explains itself ----------
+const KIND_LINE = {
+  info:   {ic:'💬', name:'For the family', desc:'Everyone can see it'},
+  invite: {ic:'📨', name:'Invite',         desc:'Tagged people can say I’m in'},
+  private:{ic:'🔒', name:'Private',        desc:'Others just see “busy”'},
+  list:   {ic:'☑️', name:'List',           desc:'Checklist the family can tick off'},
+};
+function kindReason(d){
+  const names = d.people.length === S.members.length && S.members.length > 1 ? 'everyone'
+    : d.people.map(id => firstName(member(id)?.name)).filter(Boolean).join(' & ');
+  if(d.kind === 'invite') return names ? `because you tagged ${names}` : 'tag who’s invited with @';
+  if(d.kind === 'list') return C.kindManual ? (d.isPrivate ? 'only people you @tag can see it' : 'put items after a “:” or below') : 'because you listed items after a “:”';
+  if(d.kind === 'private') return names ? `only you${d.people.length > 1 ? ',' : ' and'} ${names} can see what it is` : 'only you can see what it is';
+  return C.kindManual ? 'everyone in the family can see it' : 'everyone sees it · tap to change';
+}
+function renderKindLine(d){
+  const K = KIND_LINE[d.kind];
+  let h = `<button class="kchip k-${d.kind}" id="cKindBtn" aria-expanded="${!!C.kindMenu}"><b>${K.ic}</b>${K.name}<span class="car">▾</span></button><span class="why">${esc(kindReason(d))}</span>`;
+  if(C.kindMenu){
+    h += `<div class="kmenu">${Object.entries(KIND_LINE).map(([k, x]) => `<button class="${k === d.kind ? 'on' : ''}" data-kind="${k}"><b>${x.ic}</b><span><strong>${x.name}</strong><small>${x.desc}</small></span></button>`).join('')}`
+      + (C.kindManual && !C.editing ? `<button class="auto" data-kindauto="1"><b>✨</b><span><strong>Let the app decide</strong><small>Picks from what you type</small></span></button>` : '') + `</div>`;
+  }
+  $('#cKinds').innerHTML = h;
+}
+
 function renderSugg(){
   const el = $('#cText'), before = el.value.slice(0, el.selectionStart);
   const m = before.match(/([@#])([^\s@#]*)$/), box = $('#cSugg');
@@ -1560,7 +1631,7 @@ async function saveComposer(){
     if(d.date){ S.sel = d.date; S.tab = 'cal'; setTab('cal'); }
     else if(d.kind === 'list'){ setTab('lists'); }
     await refresh();
-    toast(`${d.sticker || '✨'} ${wasEdit ? 'Saved' : 'Added'}${d.date ? ' to ' + dayLabel(d.date) : ''}`);
+    toast(`${d.sticker || '✨'} ${wasEdit ? 'Saved' : 'Added'}${d.date ? ' for ' + dateLabel(d.date) : ''}`);
     const el = document.querySelector(`[data-open="${saved.id}"] .sticker`); if(el){ el.classList.add('slap'); }
     if(wasEdit) closeSheet();
   }catch(e){ btn.disabled = false; toast('⚠️ ' + e.message); }
@@ -1622,6 +1693,8 @@ function setRsvp(id, status){
 }
 function react(id, st){
   const on = !S.reactions.some(r => r.event_id===id && r.member_id===S.me.id && r.sticker===st);
+  S.reactOpen = null;
+  if(on){ S.lastReact = id + ':' + st; clearTimeout(react._t); react._t = setTimeout(() => { S.lastReact = null; }, 900); toast(`${st} Sent!`); }
   act(() => B.setReaction(id, st, on).then(() => { if(on) B.notify({type:'react', event_id:id, sticker:st}); }), () => { S.reactions = S.reactions.filter(r => !(r.event_id===id && r.member_id===S.me.id && r.sticker===st)); if(on) S.reactions.push({event_id:id, member_id:S.me.id, sticker:st}); });
   if(navigator.vibrate) navigator.vibrate(10);
 }
@@ -1826,13 +1899,16 @@ document.addEventListener('click', e => {
   if(d.check){ toggleItem(d.check); return; }
   if(d.delitem){ act(() => B.deleteItem(d.delitem), () => { S.items = S.items.filter(i => i.id !== d.delitem); }); return; }
   if(d.react){ react(d.id, d.react); return; }
+  if(d.reactpick){ S.reactOpen = S.reactOpen === d.reactpick ? null : d.reactpick; render(); return; }
   if(d.edit){ openComposer({id:d.edit}); return; }
   if(d.del){ deleteEvent(d.del); return; }
   if(d.ics){ downloadIcs(d.ics); return; }
   if(d.try){ openComposer({text:d.try, kind:d.kind}); return; }
   if(d.tab){ setTab(d.tab); return; }
   if(t.closest('#composer')){
-    if(d.kind){ C.kind = d.kind; C.kindManual = true; updateComposer(); return; }
+    if(t.id === 'cKindBtn'){ C.kindMenu = !C.kindMenu; updateComposer(); return; }
+    if(d.kindauto){ C.kindManual = false; C.kindMenu = false; updateComposer(); return; }
+    if(d.kind){ C.kind = d.kind; C.kindManual = true; C.kindMenu = false; updateComposer(); return; }
     if(d.qd !== undefined){ C.mDate = d.qd || null; updateComposer(); return; }
     if(d.stk){ const cur = draft().sticker; C.stickerManual = true; C.sticker = cur === d.stk ? null : d.stk; updateComposer(); return; }
     if(d.ins){ insertToken(d.ins); return; }
