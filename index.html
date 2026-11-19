@@ -188,7 +188,44 @@ main{padding:4px 16px 20px}
 .kinds button{padding:8px 0;border-radius:11px;font-size:13px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:1px}
 .kinds button b{font-size:18px}
 .kinds button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
-.big{width:100%;border:0;outline:0;background:transparent;font-size:24px;font-weight:700;padding:16px 2px 8px;letter-spacing:-.01em;resize:none}
+.big{width:100%;border:0;outline:0;background:transparent;font-size:24px;font-weight:700;line-height:1.3;padding:16px 2px 8px;letter-spacing:-.01em;resize:none;font-family:inherit}
+/* ---- typing that lights up ---- */
+.titlerow{display:flex;align-items:flex-start;gap:10px}
+.hlwrap{position:relative;flex:1;min-width:0}
+.hlwrap textarea{position:relative;z-index:1;display:block;overflow:hidden}
+.hl{position:absolute;inset:0;margin:0;color:transparent;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;pointer-events:none;overflow:hidden}
+.hl mark{color:transparent;border-radius:7px;box-shadow:0 0 0 3px var(--mk);background:var(--mk)}
+.hl .hl-when{--mk:color-mix(in srgb,#3b82f6 22%,transparent)}
+.hl .hl-where{--mk:color-mix(in srgb,#10b981 24%,transparent)}
+.hl .hl-who{--mk:color-mix(in srgb,var(--c,#a855f7) 28%,transparent)}
+.hl .hl-items{--mk:color-mix(in srgb,#f59e0b 20%,transparent)}
+.hl mark.pop{animation:hlpop .6s ease-out}
+@keyframes hlpop{0%{background:color-mix(in srgb,var(--accent) 55%,transparent);box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 25%,transparent)}100%{}}
+/* ---- live sticker ---- */
+.livestk{flex:none;width:62px;height:62px;margin-top:8px;display:grid;place-items:center;font-size:44px;line-height:1;border-radius:20px;transform:rotate(8deg);
+  text-shadow:2px 0 #fff,-2px 0 #fff,0 2px #fff,0 -2px #fff,1.5px 1.5px #fff,-1.5px -1.5px #fff,1.5px -1.5px #fff,-1.5px 1.5px #fff;filter:drop-shadow(0 3px 3px rgba(0,0,0,.22))}
+.livestk.empty{font-size:28px;border:2px dashed var(--line);transform:none;filter:none;text-shadow:none}
+.livestk.empty span{filter:grayscale(1);opacity:.35}
+.livestk.slapin{animation:liveslap .5s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes liveslap{0%{transform:scale(2.4) rotate(-30deg);opacity:0}55%{transform:scale(.9) rotate(14deg);opacity:1}100%{transform:rotate(8deg)}}
+.stksug{display:flex;gap:6px;align-items:center;margin:-2px 0 8px;overflow-x:auto;scrollbar-width:none}
+.stksug::-webkit-scrollbar{display:none}
+.stksug button{flex:none;width:42px;height:42px;border-radius:13px;font-size:24px;display:grid;place-items:center;background:var(--card);box-shadow:var(--shadow);transition:transform .15s}
+.stksug button:active{transform:scale(.85) rotate(-10deg)}
+.stksug button.on{box-shadow:0 0 0 2px var(--accent) inset,var(--shadow);transform:rotate(-8deg) scale(1.06)}
+.stksug button.more{font-size:18px;color:var(--muted);background:transparent;box-shadow:none;border:2px dashed var(--line)}
+/* ---- @ Who / # Where / 📅 When ---- */
+.helpers{display:flex;gap:8px;margin:2px 0 10px;flex-wrap:wrap;align-items:center}
+.helpers .hb{flex:none}
+.hb{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-weight:800;font-size:14px;border:1.5px solid var(--hc);color:color-mix(in srgb,var(--hc) 80%,var(--ink));background:color-mix(in srgb,var(--hc) 10%,var(--card))}
+.hb-who{--hc:#a855f7}.hb-where{--hc:#10b981}.hb-when{--hc:#3b82f6}
+.hb.on{background:var(--hc);color:#fff}
+.hbav{display:flex}
+.hbav i{font-style:normal;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;margin-left:-6px;background:color-mix(in srgb,var(--c) 25%,var(--card));box-shadow:0 0 0 1.5px var(--card)}
+.hbav i:first-child{margin-left:0}
+.sugg button.whenchip{padding:6px 12px;color:#1d4ed8;background:color-mix(in srgb,#3b82f6 10%,var(--card))}
+.sugg-tip{font-size:14px;color:var(--muted);padding:4px 2px}
+@media (prefers-color-scheme: dark){ .sugg button.whenchip{color:#93c5fd} }
 .big::placeholder{color:color-mix(in srgb,var(--muted) 70%,transparent)}
 .hint{font-size:13px;color:var(--muted);margin:0 2px 10px}
 .hint code{background:var(--soft);padding:1px 5px;border-radius:5px;font-family:inherit;font-weight:700;color:var(--ink)}
@@ -531,7 +568,16 @@ main{padding:4px 16px 20px}
   </div>
   <div class="cbody">
     <div class="kinds" id="cKinds"></div>
-    <textarea class="big" id="cText" rows="1" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></textarea>
+    <div class="titlerow">
+      <div class="hlwrap"><div class="hl big" id="cHl" aria-hidden="true"></div><textarea class="big" id="cText" rows="1" autocomplete="off" autocapitalize="sentences" enterkeyhint="done"></textarea></div>
+      <button class="livestk empty" id="cLive" aria-label="Choose a sticker"><span>🙂</span></button>
+    </div>
+    <div class="stksug hidden" id="cStkSug"></div>
+    <div class="helpers" id="cHelpers">
+      <button class="hb hb-who" data-help="who"><span class="hbav" id="cWhoAv"></span>@ Who</button>
+      <button class="hb hb-where" data-help="where">📍 # Where</button>
+      <button class="hb hb-when" data-help="when">📅 When</button>
+    </div>
     <div class="sugg" id="cSugg"></div>
     <div class="hint" id="cHint"></div>
     <div class="pills" id="cPills"></div>
@@ -541,7 +587,8 @@ main{padding:4px 16px 20px}
       <div class="lbl" id="cItemsLbl">Items</div>
       <textarea class="ta" id="cItems" placeholder="Milk&#10;Eggs&#10;Bread (one per line, or commas)"></textarea>
     </div>
-    <div class="lbl">Sticker</div>
+    <div id="cStkAll" class="hidden">
+    <div class="lbl">All stickers</div>
     <div class="stk" id="cStk"></div>
     <div id="cStkNew" class="stknew hidden">
       <div class="stknew-top"><span class="stkprev" id="nsPrev">😀</span>
@@ -549,6 +596,7 @@ main{padding:4px 16px 20px}
         <div class="hint" id="nsHint">Tap 😀 or 🌐 on your keyboard to switch to emoji.</div></div></div>
       <input id="nsWords" class="field" placeholder="Auto-pick when I type… (optional) e.g. violin, orchestra" autocomplete="off" enterkeyhint="done">
       <div class="btns" style="margin-top:4px"><button class="btn" id="nsCancel">Cancel</button><button class="btn primary" id="nsSave" disabled>Add for the family</button></div>
+    </div>
     </div>
     <div id="cNotesWrap">
       <button class="linkish" id="cNotesBtn">+ Add a note</button>
@@ -630,6 +678,18 @@ function countdowns(){
     .sort((a,b) => a.starts_on.localeCompare(b.starts_on));
 }
 const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function stickerMatches(text){
+  const s = (text||'').toLowerCase(), out = [];
+  for(const c of (S.custom||[])) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) out.push(c.emoji);
+  for(const [re,e] of STICKER_KEYS) if(re.test(s)) out.push(e);
+  return [...new Set(out)];
+}
+function stickerSuggestions(d){
+  const fromText = stickerMatches(`${d.title} ${d.place||''}`);
+  const counts = {}; S.events.forEach(e => { const st = view(e).sticker; if(st) counts[st] = (counts[st]||0) + 1; });
+  const familyFaves = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(x => x[0]);
+  return [...new Set([d.sticker, ...fromText, ...familyFaves, '🎉','❤️','⭐','🍕','⚽','🎂','☕','🚗'].filter(Boolean))].slice(0, 6);
+}
 function autoSticker(text){
   const s = (text||'').toLowerCase();
   for(const c of (S.custom||[])) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) return c.emoji;
@@ -687,7 +747,7 @@ function parseDate(h, r){
     }
   }
   if(!best) return h;
-  r.date = best.d;
+  r.date = best.d; r.dateText = h.slice(best.idx, best.end).trim();
   return h.slice(0, best.idx) + ' ' + h.slice(best.end);
 }
 function mkDate(y, mo, d){
@@ -706,7 +766,7 @@ function parseTime(h, r){
       if(!am && !bm && a.h < 8 && b.h <= 12){ am = bm = 'p'; }
       if(!am && bm){ am = to24(a,bm) <= to24(b,bm) ? bm : (bm==='p' ? 'a' : 'p'); }
       if(am && !bm){ bm = am; if(to24(b,bm) <= to24(a,am) && am==='a') bm = 'p'; }
-      r.start = to24(a, am); r.end = to24(b, bm);
+      r.start = to24(a, am); r.end = to24(b, bm); r.timeText = m[0].trim();
       return h.replace(m[0], ' ');
     }
   }
@@ -715,7 +775,7 @@ function parseTime(h, r){
     const hasAt = !!s[1];
     if(!o.sure && !hasAt) continue;
     let mer = o.mer; if(!mer && o.h>=1 && o.h<8) mer = 'p';
-    r.start = to24(o, mer);
+    r.start = to24(o, mer); r.timeText = s[0].trim();
     return h.replace(s[0], ' ');
   }
   return h;
@@ -737,15 +797,15 @@ function parseQuick(raw, opts={}){
   let h = ' ' + head.replace(/\s+/g,' ') + ' ';
   h = h.replace(/@([A-Za-z][\w'’-]*)/g, (m, n) => {
     const low = n.toLowerCase();
-    if(/^(all|everyone|everybody|family|fam)$/.test(low)){ S.members.forEach(x => r.people.includes(x.id) || r.people.push(x.id)); return ' '; }
+    if(/^(all|everyone|everybody|family|fam)$/.test(low)){ S.members.forEach(x => r.people.includes(x.id) || r.people.push(x.id)); (r.tags = r.tags || []).push({tok:m, color:'#a855f7'}); return ' '; }
     const mm = S.members.find(x => firstName(x.name).toLowerCase() === low) || S.members.find(x => x.name.toLowerCase().startsWith(low));
-    if(mm){ if(!r.people.includes(mm.id)) r.people.push(mm.id); return ' '; }
+    if(mm){ if(!r.people.includes(mm.id)) r.people.push(mm.id); (r.tags = r.tags || []).push({tok:m, color:mm.color}); return ' '; }
     return m;
   });
   if(!opts.noDateTime && !opts.noDate) h = parseDate(h, r);
   if(!opts.noDateTime && !opts.noTime) h = parseTime(h, r);
   const pm = h.match(/#([^@#]+)/);
-  if(pm){ r.place = pm[1].trim().replace(/[,.;]+$/,'') || null; h = h.replace(pm[0], ' '); }
+  if(pm){ r.place = pm[1].trim().replace(/[,.;]+$/,'') || null; if(r.place) r.placeText = '#' + r.place; h = h.replace(pm[0], ' '); }
   let t = h.replace(/\s+/g,' ').trim();
   for(let i=0;i<3;i++) t = t.replace(/\s+(at|on|from|with|in|by|this|-|–)$/i,'').replace(/^(at|on)\s+/i,'');
   r.title = t;
@@ -1272,7 +1332,8 @@ function openComposer(opts = {}){
     const ppl = (ev.invitees||[]).map(id => '@' + firstName(member(id)?.name)).filter(x => x !== '@').join(' ');
     text = [ev.title, ppl, ev.place ? '#' + ev.place : ''].filter(Boolean).join(' ');
   }
-  $('#cText').value = text; C.origDT = ev ? parseQuick(text) : null; $('#cItems').value = ''; $('#cNotes').value = ev?.notes || '';
+  $('#cText').value = text; C.origDT = ev ? parseQuick(text) : null; C.whenOpen = false; C.hlSeen = new Set(); C.liveLast = undefined;
+  $('#cStkAll').classList.add('hidden'); document.querySelectorAll('#cHelpers .hb').forEach(b => b.classList.remove('on')); $('#cItems').value = ''; $('#cNotes').value = ev?.notes || '';
   $('#cNotes').classList.toggle('hidden', !ev?.notes); $('#cNotesBtn').classList.toggle('hidden', !!ev?.notes);
   $('#cTitle').textContent = ev ? 'Edit' : 'New'; $('#cSave').textContent = ev ? 'Save' : 'Add';
   $('#composer').classList.add('on'); $('#composer').setAttribute('aria-hidden','false'); if(isDesk()) $('#scrim').classList.add('on');
@@ -1308,7 +1369,7 @@ function draft(){
   const sticker = C.stickerManual ? C.sticker : autoSticker(title + ' ' + (p.place||''));
   const countdown = !!date && (C.cdManual ? C.countdown : COUNTDOWN_RE.test(title));
   const isPrivate = kind === 'list' && !!C.listPrivate;
-  return { isPrivate, countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
+  return { _p:p, isPrivate, countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
 }
 
 function updateComposer(){
@@ -1316,10 +1377,11 @@ function updateComposer(){
   const d = draft(), K = KINDS.find(k => k.k === d.kind);
   $('#cKinds').innerHTML = KINDS.map(k => `<button class="${k.k===d.kind?'on':''}" data-kind="${k.k}"><b>${k.ic}</b>${k.name}</button>`).join('');
   $('#cText').placeholder = K.ph;
-  $('#cHint').innerHTML = C.editing ? 'Type a new day or time (like <code>Sat 3pm</code>), or tap the buttons below.' :
-    d.kind==='invite' ? 'Tag people with <code>@Name</code> (or <code>@everyone</code>) and a place with <code>#</code>.' :
-    d.kind==='list' ? 'Type <code>Title: item, item</code> or add items below.' :
-    'Type naturally: <code>Fri 6pm</code>, <code>tomorrow 3-4pm</code>, <code>#Place</code>, <code>@Name</code>';
+  const typed = $('#cText').value.trim().length > 0;
+  $('#cHint').innerHTML = C.editing ? 'Type a new day or time, like <b>Sat 3pm</b>. Words light up when I understand them.' :
+    d.kind==='list' ? 'Type <b>Groceries: milk, eggs, bread</b> — items light up as you go.' :
+    typed ? '' : 'Type it like a text message. Words light up when I understand them. 🎙️ Or just say it with the mic on your keyboard.';
+  renderHighlights(d); renderLive(d);
   // pills
   const dateLbl = d.date ? (d.date===todayStr() ? 'Today' : d.date===addDays(todayStr(),1) ? 'Tomorrow' : shortDate(d.date)) : 'No date';
   let p = `<label class="p ${d.date?'':'off'}">📅 ${esc(dateLbl)}<input type="date" id="cDate" value="${d.date||''}"></label>`;
@@ -1336,6 +1398,7 @@ function updateComposer(){
   // quick dates
   const t = todayStr(); const q = [[t,'Today'],[addDays(t,1),'Tmrw']];
   for(let i=2;i<7;i++){ const dd = addDays(t,i); q.push([dd, parseYmd(dd).toLocaleDateString(undefined,{weekday:'short'})]); }
+  $('#cQuick').classList.toggle('hidden', d.kind !== 'list');
   $('#cQuick').innerHTML = (d.kind==='list' ? `<button class="${!d.date?'on':''}" data-qd="">No date</button>` : '') + q.map(([dd,l]) => `<button class="${d.date===dd?'on':''}" data-qd="${dd}">${l}</button>`).join('');
   // private + items
   $('#cPriv').classList.toggle('hidden', !(d.kind === 'private' || d.isPrivate));
@@ -1356,9 +1419,113 @@ function updateComposer(){
   $('#cSave').disabled = !(d.title || d.items.length);
 }
 
+// ---------- 1. highlight the words the app understood ----------
+function looseMatch(text, start, needle){
+  // compare ignoring case and extra spaces; returns end index or -1
+  let i = start, j = 0; const T = text.toLowerCase(), N = needle.toLowerCase();
+  while(j < N.length){
+    if(/\s/.test(N[j])){ if(!/\s/.test(T[i] || '')) return -1; while(/\s/.test(T[i] || '')) i++; while(/\s/.test(N[j] || '')) j++; continue; }
+    if(T[i] !== N[j]) return -1; i++; j++;
+  }
+  return i;
+}
+function findSpan(text, needle, last, taken){
+  if(!needle) return null;
+  const hits = [];
+  for(let i = 0; i < text.length; i++){
+    const e = looseMatch(text, i, needle);
+    if(e > i && !taken.some(([a,b]) => i < b && e > a)) hits.push([i, e]);
+  }
+  return hits.length ? (last ? hits[hits.length-1] : hits[0]) : null;
+}
+function hlRanges(text, p){
+  const out = [], taken = [];
+  const add = (r, cls, color) => { if(r){ out.push({a:r[0], b:r[1], cls, color}); taken.push(r); } };
+  (p.tags || []).forEach(t => add(findSpan(text, t.tok, false, taken), 'who', t.color));
+  add(findSpan(text, p.placeText, false, taken), 'where');
+  add(findSpan(text, p.timeText, false, taken), 'when');
+  add(findSpan(text, p.dateText, true, taken), 'when');
+  if(p.listLike){ const [head, tail] = splitList(text); add([head.length + 1 + (tail.length - tail.trimStart().length), text.replace(/\s+$/,'').length], 'items'); }
+  return out.filter(r => r.b > r.a).sort((x, y) => x.a - y.a);
+}
+function renderHighlights(d){
+  const text = $('#cText').value, ranges = hlRanges(text, d._p || {});
+  C.hlSeen = C.hlSeen || new Set();
+  let h = '', at = 0;
+  ranges.forEach(r => {
+    const word = text.slice(r.a, r.b), key = r.cls + ':' + word.toLowerCase();
+    const fresh = !C.hlSeen.has(key); C.hlSeen.add(key);
+    h += esc(text.slice(at, r.a)) + `<mark class="hl-${r.cls}${fresh ? ' pop' : ''}"${r.color ? ` style="--c:${esc(r.color)}"` : ''}>${esc(word)}</mark>`;
+    at = r.b;
+  });
+  $('#cHl').innerHTML = h + esc(text.slice(at)) + '​';
+}
+
+// ---------- 2. live sticker beside the title ----------
+function renderLive(d){
+  const live = $('#cLive'), st = d.sticker;
+  if(st !== C.liveLast){
+    live.innerHTML = `<span>${esc(st || '🙂')}</span>`;
+    live.classList.toggle('empty', !st);
+    if(st){ live.classList.remove('slapin'); void live.offsetWidth; live.classList.add('slapin'); }
+    C.liveLast = st;
+  }
+  const sug = $('#cStkSug'), show = !!d.title;
+  sug.classList.toggle('hidden', !show);
+  if(show) sug.innerHTML = stickerSuggestions(d).map(e => `<button class="${e === st ? 'on' : ''}" data-stksug="${esc(e)}">${esc(e)}</button>`).join('')
+    + `<button class="more" id="cStkMore" aria-label="All stickers">${$('#cStkAll').classList.contains('hidden') ? '⋯' : '✕'}</button>`;
+  $('#cWhoAv').innerHTML = S.members.slice(0, 3).map(m => `<i style="--c:${esc(m.color)}">${esc(m.emoji)}</i>`).join('');
+}
+function toggleAllStickers(force){
+  const el = $('#cStkAll'), open = force ?? el.classList.contains('hidden');
+  el.classList.toggle('hidden', !open);
+  if(open) setTimeout(() => el.scrollIntoView({block:'nearest', behavior:'smooth'}), 60);
+  updateComposer();
+}
+
+// ---------- 3. @ Who / # Where / 📅 When ----------
+function insertAtCaret(str){
+  // helper buttons always add to the end of the sentence (before a list's "items" part)
+  const el = $('#cText'), [head, tail] = splitList(el.value);
+  const base = head.replace(/\s+$/, ''), sep = base ? ' ' : '';
+  el.value = base + sep + str + (tail !== null ? ':' + tail : '');
+  const np = (base + sep + str).length; el.focus(); el.setSelectionRange(np, np);
+  updateComposer(); autoGrow(); renderSugg();
+}
+function helper(kind){
+  C.whenOpen = kind === 'when' ? !C.whenOpen : false;
+  if(kind === 'who') insertAtCaret('@');
+  else if(kind === 'where') insertAtCaret('#');
+  else { $('#cText').focus(); renderSugg(); }
+  document.querySelectorAll('#cHelpers .hb').forEach(b => b.classList.toggle('on', b.dataset.help === 'when' && C.whenOpen));
+}
+function applyWhen(phrase, type){
+  const el = $('#cText'), p = draft()._p || {}, text = el.value;
+  const span = findSpan(text, type === 'date' ? p.dateText : p.timeText, type === 'date', []);
+  let out, caret;
+  if(span) out = text.slice(0, span[0]) + phrase + text.slice(span[1]);
+  else {
+    const [head, tail] = splitList(text);
+    const base = head.replace(/\s+$/, ''); const sep = base ? ' ' : '';
+    out = base + sep + phrase + (tail !== null ? ':' + tail : '');
+  }
+  caret = splitList(out)[0].replace(/\s+$/, '').length;   // keep typing at the end
+  if(type === 'date') C.mDate = undefined; else { C.mStart = undefined; C.mEnd = undefined; }   // what you type wins
+  el.value = out; el.focus(); el.setSelectionRange(caret, caret);
+  updateComposer(); autoGrow(); renderSugg();
+}
+function whenChips(){
+  const t = todayStr(), days = [['today','Today'], ['tonight','Tonight'], ['tomorrow','Tomorrow']];
+  for(let i = 2; i < 7; i++){ const dt = parseYmd(addDays(t, i)); const w = dt.toLocaleDateString('en-US', {weekday:'short'}); days.push([w, w]); }
+  const times = ['9am','noon','3pm','5:30pm','6pm','7pm'];
+  return days.map(([v, l]) => `<button class="whenchip" data-when="${v}" data-wt="date">📅 ${l}</button>`).join('')
+    + times.map(v => `<button class="whenchip" data-when="${v}" data-wt="time">🕒 ${v}</button>`).join('');
+}
+
 function renderSugg(){
   const el = $('#cText'), before = el.value.slice(0, el.selectionStart);
   const m = before.match(/([@#])([^\s@#]*)$/), box = $('#cSugg');
+  if(C && C.whenOpen){ box.innerHTML = whenChips(); return; }
   if(!m){ box.innerHTML = ''; return; }
   const q = m[2].toLowerCase();
   if(m[1] === '@'){
@@ -1367,7 +1534,8 @@ function renderSugg(){
       ('everyone'.startsWith(q) ? `<button class="place" data-ins="@everyone">👨‍👩‍👧‍👦 Everyone</button>` : '');
   } else {
     const places = [...new Set(S.events.map(e => view(e).place).filter(Boolean))].filter(p => p.toLowerCase().includes(q)).slice(0, 8);
-    box.innerHTML = places.map(p => `<button class="place" data-ins="#${esc(p)}">📍 ${esc(p)}</button>`).join('');
+    box.innerHTML = places.length ? places.map(p => `<button class="place" data-ins="#${esc(p)}">📍 ${esc(p)}</button>`).join('')
+      : (q ? '' : `<span class="sugg-tip">📍 Type a place after the #, like <b>#Grandma's</b> or <b>#Field 3</b></span>`);
   }
 }
 function insertToken(tok){
@@ -1375,7 +1543,7 @@ function insertToken(tok){
   el.value = before + tok + ' ' + after.replace(/^\s+/, '');
   const np = (before + tok + ' ').length; el.focus(); el.setSelectionRange(np, np); updateComposer(); autoGrow();
 }
-function autoGrow(){ const t = $('#cText'); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function autoGrow(){ const t = $('#cText'); t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; $('#cHl').style.height = t.style.height; }
 
 async function saveComposer(){
   const d = draft();
@@ -1668,6 +1836,10 @@ document.addEventListener('click', e => {
     if(d.qd !== undefined){ C.mDate = d.qd || null; updateComposer(); return; }
     if(d.stk){ const cur = draft().sticker; C.stickerManual = true; C.sticker = cur === d.stk ? null : d.stk; updateComposer(); return; }
     if(d.ins){ insertToken(d.ins); return; }
+    if(d.help){ helper(d.help); return; }
+    if(d.when){ applyWhen(d.when, d.wt); return; }
+    if(d.stksug){ C.stickerManual = true; C.sticker = draft().sticker === d.stksug ? null : d.stksug; updateComposer(); return; }
+    if(t.id === 'cLive' || t.id === 'cStkMore'){ toggleAllStickers(); return; }
     if(t.id === 'cClearTime'){ C.mStart = null; C.mEnd = null; updateComposer(); return; }
     if(t.id === 'cStkAdd'){ openStickerAdd(); return; }
     if(t.id === 'nsCancel'){ closeStickerAdd(); return; }
@@ -1712,6 +1884,7 @@ $('#cCancel').onclick = closeComposer;
 $('#cSave').onclick = saveComposer;
 $('#cNotesBtn').onclick = () => { $('#cNotesBtn').classList.add('hidden'); $('#cNotes').classList.remove('hidden'); $('#cNotes').focus(); };
 $('#cText').addEventListener('input', () => { updateComposer(); autoGrow(); });
+['#cHelpers', '#cSugg', '#cStkSug'].forEach(sel => $(sel).addEventListener('mousedown', e => { if(e.target.closest('button') && document.activeElement === $('#cText')) e.preventDefault(); }));
 $('#cText').addEventListener('keyup', renderSugg);
 $('#cText').addEventListener('click', renderSugg);
 $('#cText').addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); saveComposer(); } });
