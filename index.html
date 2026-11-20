@@ -620,6 +620,7 @@ main{padding:4px 16px 20px}
 .ssset .ssrow select{font:inherit;padding:6px 8px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink)}
 .ssset .ssmedia{margin:12px 2px 6px;color:var(--muted);font-size:14px}
 .ssset .ssmedia b{color:var(--ink)}
+.ssset .ssub{margin:6px 0 0 6px;padding-left:12px;border-left:3px solid var(--line)}
 .ssset .sshead{margin:18px 2px 0;font-weight:800;font-size:15px}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .pcell{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--soft);display:grid;place-items:center}
@@ -1903,7 +1904,8 @@ function openMe(){
   let h = `<div style="display:flex;align-items:center;gap:12px">${avatar(me,'lg')}<div style="flex:1"><label class="namefield"><input class="field" id="meName" value="${esc(me.name)}" maxlength="40" placeholder="Your name" autocomplete="off" enterkeyhint="done" style="margin:0"><span>✏️</span></label><div class="hint" style="margin:4px 2px 0">Tap to change your name</div></div></div>
     <div class="lbl">Your avatar</div>${avatarPicker(me.emoji, 'me')}
     <div class="lbl">Your color</div><div class="colors">${COLORS.map(c => `<button class="${c===me.color?'on':''}" style="--c:${c}" data-mecolor="${c}"></button>`).join('')}</div>
-    <div class="lbl">Screensaver &amp; wall display</div>${ssSection()}
+    <div class="lbl">Shared display</div>${ssSection()}
+    ${sharedPhotos() ? `<div class="lbl">📷 Family photos</div>${photosSection()}` : ''}
     <div class="lbl">Notifications</div>${pushSection()}
     <div class="lbl">Family stickers</div>${stickersSection()}
     <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
@@ -2189,12 +2191,15 @@ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('messa
    screen plays this device's photos and videos. Any touch brings the normal app back.
    Settings + media live on THIS device only (localStorage + IndexedDB), so nothing touches Supabase storage. */
 const SS = { on:false, cfg:null, media:[], order:[], idx:-1, idleT:null, tickT:null, advT:null, wake:null, since:0, swallow:0, fails:0, fs:false };
-const SS_DEF = { enabled:false, idle:2, secs:10, sound:false, night:true, shared:false, homeId:null, homePin:'' };
+const SS_DEF = { enabled:false, idle:2, secs:10, sound:false, night:true, shared:false, homeId:null, homePin:'', display:false };
 function ssCfg(){
-  if(!SS.cfg){ let c = {}; try{ c = JSON.parse(localStorage.getItem('famcal-ss') || '{}'); }catch(e){} SS.cfg = { ...SS_DEF, ...c }; }
+  if(!SS.cfg){ let c = {}; try{ c = JSON.parse(localStorage.getItem('famcal-ss') || '{}'); }catch(e){}
+    if(c.display === undefined) c.display = !!(c.enabled || c.shared);     // screens set up before the "shared display" switch existed
+    SS.cfg = { ...SS_DEF, ...c }; }
   return SS.cfg;
 }
-function ssSave(patch){ Object.assign(ssCfg(), patch); try{ localStorage.setItem('famcal-ss', JSON.stringify(SS.cfg)); }catch(e){} ssArm(); if(patch.enabled){ ssPersist(); photoSync(); } }
+const ssOn = () => { const c = ssCfg(); return !!(c.display && c.enabled); };     // screensaver only ever runs on a shared display
+function ssSave(patch){ Object.assign(ssCfg(), patch); try{ localStorage.setItem('famcal-ss', JSON.stringify(SS.cfg)); }catch(e){} ssArm(); if(patch.enabled && ssOn()){ ssPersist(); photoSync(); } }
 function ssPersist(){ try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){} }
 
 const SSDB = (() => {
@@ -2315,7 +2320,7 @@ async function photosAdd(files){
   if(vids.length) await ssAddFiles(vids);                         // videos stay on this device
   if(!imgs.length) return;
   let added = 0, dup = 0, bad = 0, stopped = '', lastErr = '';
-  const known = new Set(S.media.map(m => m.sha256)), cacheHere = ssCfg().enabled;
+  const known = new Set(S.media.map(m => m.sha256)), cacheHere = ssOn();
   for(const [i, f] of imgs.entries()){
     if(S.media.length + added >= photoCap()){ stopped = `Your family has reached ${photoCap()} shared photos. Remove some to add more.`; break; }
     toast(`${isHeic(f) ? 'Converting' : 'Uploading'} ${i + 1} of ${imgs.length}…`);
@@ -2337,7 +2342,7 @@ async function photosAdd(files){
 const PSYNC = { busy:false, again:false, t:null };
 function photoSyncSoon(){ clearTimeout(PSYNC.t); PSYNC.t = setTimeout(photoSync, 1200); }
 async function photoSync(){                  // make this display's photo store match the family's shared photos
-  if(!sharedPhotos() || !ssCfg().enabled) return;
+  if(!sharedPhotos() || !ssOn()) return;
   if(PSYNC.busy){ PSYNC.again = true; return; }
   PSYNC.busy = true;
   try{
@@ -2386,36 +2391,49 @@ async function deletePhoto(id){
 /* ---------- Settings (lives in the "Me" sheet) ---------- */
 function ssSection(){
   const c = ssCfg(), own = SS.media.filter(m => !m.mid), vids = own.filter(m => m.type === 'video').length, pics = own.length - vids;
-  const shared = sharedPhotos(), cachedHere = SS.media.filter(m => m.mid).length;
+  const shared = sharedPhotos();
   const sel = (key, opts, unit) => `<select data-ss-set="${key}">${opts.map(v => `<option value="${v}" ${+c[key] === v ? 'selected' : ''}>${v} ${unit}</option>`).join('')}</select>`;
   const chk = (key, label) => `<label class="ssrow"><span>${label}</span><input type="checkbox" data-ss-toggle="${key}" ${c[key] ? 'checked' : ''}></label>`;
-  return `<div class="ssset">
-    <div class="hint" style="margin:0 0 6px">When this screen sits idle, today's plan slides to the left and your photos and videos play on the right. Saved on this device only.</div>
-    ${chk('enabled', 'Screensaver on this device')}
-    <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
-    <label class="ssrow"><span>Each photo shows for</span>${sel('secs', [5,8,10,15,20,30], 'sec')}</label>
-    ${chk('sound', 'Play sound on videos')}
-    ${chk('night', 'Dim at night (10pm–6am)')}
-    ${chk('shared', 'Shared screen: ask who’s writing')}
-    <div class="hint" style="margin:4px 0 0">Before anyone adds, edits or reacts, they pick their name and enter their PIN. The screen switches back after a minute of no use. Tip: sign this screen in as a “Family” member so nobody’s own account stays open.</div>
-    ${shared ? `<div class="sshead">📷 Shared family photos</div>
-    <div class="ssmedia"><b>${S.media.length} of ${photoCap()}</b> photos · every frame in the family shows them${c.enabled ? ` · ${cachedHere} saved on this screen` : ''}</div>
-    <input type="file" id="ssShared" accept="image/*,.heic,.heif" multiple class="hidden">
-    <div class="btns"><button class="btn" data-photoadd>＋ Add photos</button><button class="btn" data-photos>Manage${S.media.length ? ` (${S.media.length})` : ''}</button></div>
-    <div class="sshead">📱 On this device only</div>
-    <div class="ssmedia">${own.length ? `${vids} video${vids === 1 ? '' : 's'}${pics ? ` · ${pics} photo${pics === 1 ? '' : 's'}` : ''}` : 'Videos you add here play only on this screen.'}</div>
+  const deviceMedia = shared
+    ? `<div class="sshead">📱 Extra videos for this screen</div>
+    <div class="ssmedia">${own.length ? `${vids} video${vids === 1 ? '' : 's'}${pics ? ` · ${pics} photo${pics === 1 ? '' : 's'}` : ''}` : 'Videos you add here play only on this screen. Family photos are below.'}</div>
     <input type="file" id="ssFile" accept="video/*" multiple class="hidden">
     <div class="btns"><button class="btn" id="ssPick">＋ Videos</button><button class="btn" id="ssLink">＋ By link</button></div>`
-    : `<div class="ssmedia">${SS.media.length ? `${pics} photo${pics === 1 ? '' : 's'} · ${vids} video${vids === 1 ? '' : 's'} on this device` : 'No photos or videos yet. Add some below.'}</div>
+    : `<div class="sshead">🖼️ Photos &amp; videos</div>
+    <div class="ssmedia">${SS.media.length ? `${pics} photo${pics === 1 ? '' : 's'} · ${vids} video${vids === 1 ? '' : 's'} on this screen` : 'No photos or videos yet. Add some below.'}</div>
     <input type="file" id="ssFile" accept="image/*,video/*,.heic,.heif" multiple class="hidden">
-    <div class="btns"><button class="btn" id="ssPick">＋ Photos &amp; videos</button><button class="btn" id="ssLink">＋ By link</button></div>`}
-    ${own.some(m => m.url) ? '<div class="btns"><button class="btn" id="ssPrune">Remove links that don’t load</button></div>' : ''}
-    <div class="btns">${own.length ? `<button class="btn danger" id="ssClear">Remove ${shared ? 'device-only items' : 'all'}</button>` : ''}<button class="btn primary" id="ssGo">▶ Start now</button></div>
+    <div class="btns"><button class="btn" id="ssPick">＋ Photos &amp; videos</button><button class="btn" id="ssLink">＋ By link</button></div>`;
+  return `<div class="ssset">
+    ${chk('display', 'This device is a shared display')}
+    <div class="hint" style="margin:4px 0 0">${c.display ? 'Settings below apply to this screen only.' : 'Turn on for a kitchen tablet or wall screen the whole family uses. Leave it off on personal phones.'}</div>
+    ${c.display ? `<div class="ssub">
+      ${chk('enabled', 'Screensaver')}
+      ${c.enabled ? `<div class="hint" style="margin:4px 0 0">When the screen sits idle, today’s plan slides to the left and photos play on the right.</div>
+      <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
+      <label class="ssrow"><span>Each photo shows for</span>${sel('secs', [5,8,10,15,20,30], 'sec')}</label>
+      ${chk('sound', 'Play sound on videos')}
+      ${chk('night', 'Dim at night (10pm–6am)')}` : ''}
+      ${chk('shared', 'Ask who’s writing')}
+      <div class="hint" style="margin:4px 0 0">Before anyone adds, edits or reacts, they pick their name and enter their PIN. The screen switches back after a minute of no use. Tip: sign this screen in as a “Family” member so nobody’s own account stays open.</div>
+      ${c.enabled ? `${deviceMedia}
+      ${own.some(m => m.url) ? '<div class="btns"><button class="btn" id="ssPrune">Remove links that don’t load</button></div>' : ''}
+      <div class="btns">${own.length ? `<button class="btn danger" id="ssClear">Remove ${shared ? 'this screen’s videos' : 'all'}</button>` : ''}<button class="btn primary" id="ssGo">▶ Start now</button></div>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+function photosSection(){                       // shared family photos: anyone can add from their phone; every shared display plays them
+  const cachedHere = SS.media.filter(m => m.mid).length;
+  return `<div class="ssset">
+    <div class="ssmedia" style="margin-top:0"><b>${S.media.length} of ${photoCap()}</b> photos · every shared display in the family plays them${ssOn() ? ` · ${cachedHere} saved on this screen` : ''}</div>
+    <input type="file" id="ssShared" accept="image/*,.heic,.heif" multiple class="hidden">
+    <div class="btns"><button class="btn" data-photoadd>＋ Add photos</button><button class="btn" data-photos>Manage${S.media.length ? ` (${S.media.length})` : ''}</button></div>
   </div>`;
 }
 document.addEventListener('change', e => {
   const t = e.target;
   if(t.dataset && t.dataset.ssToggle === 'shared'){ t.checked ? penEnable(t) : penOff(); }
+  else if(t.dataset && t.dataset.ssToggle === 'display') ssDisplay(t.checked);
+  else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); openMe(); }
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
   else if(t.dataset && t.dataset.ssSet) ssSave({ [t.dataset.ssSet]: +t.value });
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
@@ -2555,7 +2573,7 @@ function ssStop(byUser){
 }
 function ssArm(){
   clearTimeout(SS.idleT);
-  const c = ssCfg(); if(!c.enabled || SS.on || !S.me) return;
+  const c = ssCfg(); if(!ssOn() || SS.on || !S.me) return;
   SS.idleT = setTimeout(() => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
     const busy = C || typing || $('#sheet').classList.contains('on') || !$('#onboard').classList.contains('hidden');
@@ -2572,8 +2590,8 @@ window.addEventListener('click', e => { if(Date.now() < SS.swallow){ e.stopPropa
 document.addEventListener('visibilitychange', () => { if(SS.on && document.visibilityState === 'visible'){ SS.wake = null; ssWake(); } });
 async function ssInit(force){
   await ssLoad();
-  if(ssCfg().enabled){ ssPersist(); photoSync(); }
-  if(force){ ssSave({ enabled:true }); ssStart(false); }   // ?display=1 → open straight into the wall display
+  if(ssOn()){ ssPersist(); photoSync(); }
+  if(force){ ssSave({ display:true, enabled:true }); ssStart(false); }   // ?display=1 → open straight into the wall display
   else ssArm();
 }
 
@@ -2593,7 +2611,7 @@ function penRender(){
 function penBump(){ clearTimeout(PEN.timer); if(PEN.who) PEN.timer = setTimeout(penIdle, PEN.idleMs); }
 function penIdle(){ if(!PEN.who) return; if(C || $('#sheet').classList.contains('on')){ penBump(); return; } penDown(); }
 function penGate(next, only){            // run `next` now if this person already holds the pen, otherwise ask who is writing
-  if(!ssCfg().shared || !S.me) return next();
+  if(!ssCfg().display || !ssCfg().shared || !S.me) return next();
   if(PEN.who && (!only || PEN.who === only)){ penBump(); return next(); }
   penPick(next, only);
 }
@@ -2644,9 +2662,14 @@ async function penEnable(box){                  // turning the shared-screen set
     if(!pin){ box.checked = false; return; }
     try{ await B.claim(S.family.code, me.id, pin); }catch(e){ box.checked = false; return toast('⚠️ ' + e.message); }
   }
-  ssSave({ shared:true, homeId:me.id, homePin:pin }); toast('✏️ Shared screen is on'); if($('#sheet').dataset.panel === 'me') openMe();
+  ssSave({ shared:true, homeId:me.id, homePin:pin }); toast('✏️ Ask who’s writing is on'); if($('#sheet').dataset.panel === 'me') openMe();
 }
-async function penOff(){ await penDown(true); ssSave({ shared:false, homeId:null, homePin:'' }); toast('Shared screen is off'); }
+async function ssDisplay(on){
+  if(on){ ssSave({ display:true }); toast('🖼️ Shared display on'); }
+  else{ if(ssCfg().shared) await penOff(true); if(SS.on) ssStop(); ssSave({ display:false, enabled:false }); toast('Shared display off'); }
+  if($('#sheet').dataset.panel === 'me') openMe();
+}
+async function penOff(quiet){ await penDown(true); ssSave({ shared:false, homeId:null, homePin:'' }); if(!quiet){ toast('Ask who’s writing is off'); if($('#sheet').dataset.panel === 'me') openMe(); } }
 document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('[data-penpick],[data-pengo],[data-pencancel],#penChip'); if(!t) return;
   if(t.dataset.penpick){ B.mode === 'supabase' ? penPin(t.dataset.penpick) : penTake(t.dataset.penpick); }
