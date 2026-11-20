@@ -2172,10 +2172,30 @@ async function ssAddFiles(files){
   toast(n ? `✓ Added ${n}${bad ? ` · ${bad} skipped (too big or unsupported)` : ''}` : '⚠️ Nothing added (videos over 200 MB are skipped)');
   if($('#sheet').dataset.panel === 'me') openMe();
 }
+// Google Photos / Drive / Dropbox "share" links open a web page, not a picture, so they can never show in the reel.
+const ssIsPage = u => /^https?:\/\/(photos\.app\.goo\.gl|photos\.google\.com|goo\.gl\/photos|drive\.google\.com|(www\.)?dropbox\.com|1drv\.ms|onedrive\.live\.com|icloud\.com|share\.icloud\.com)\b/i.test(u);
+// Google's picture servers return a small thumbnail unless a size is asked for.
+function ssUrl(u){ try{ const x = new URL(u); if(/^lh\d*\.googleusercontent\.com$/.test(x.hostname) && !x.pathname.split('/').pop().includes('=')) return u.split(/[?#]/)[0] + '=w2000'; }catch(e){} return u; }
+const ssProbe = (u, ms = 9000) => new Promise(res => { const i = new Image(), t = setTimeout(() => { i.src = ''; res(false); }, ms); i.referrerPolicy = 'no-referrer'; i.onload = () => { clearTimeout(t); res(true); }; i.onerror = () => { clearTimeout(t); res(false); }; i.src = ssUrl(u); });
 async function ssAddLink(url){
-  url = (url || '').trim(); if(!/^https?:\/\//i.test(url)) return toast('⚠️ Paste a full link that starts with https://');
-  await SSDB.put({ id:uid(), type:/\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url) ? 'video' : 'image', url, name:url, added:Date.now() });
+  url = (url || '').trim(); if(!url) return;
+  if(!/^https?:\/\//i.test(url)) return toast('⚠️ Paste a full link that starts with https://');
+  if(ssIsPage(url)) return alert('That link opens a web page, not the picture itself, so it can’t play here.\n\nUse “＋ Photos & videos” instead. On an Android tablet the picker can choose straight from Google Photos.');
+  const type = /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url) ? 'video' : 'image';
+  if(type === 'image'){ toast('Checking the link…'); if(!await ssProbe(url)) return alert('That link didn’t load as a picture. It has to open the photo file itself, not a web page.'); }
+  await SSDB.put({ id:uid(), type, url, name:url, added:Date.now() });
   await ssLoad(); toast('✓ Link added'); if($('#sheet').dataset.panel === 'me') openMe();
+}
+async function ssPrune(){
+  const links = SS.media.filter(m => m.url && m.type === 'image'); if(!links.length) return toast('No picture links to check');
+  toast(`Checking ${links.length} links…`);
+  const bad = []; let k = 0;
+  const worker = async () => { while(k < links.length){ const m = links[k++]; if(!await ssProbe(m.url)) bad.push(m); } };
+  await Promise.all([1,2,3,4,5,6].map(worker));
+  for(const m of bad) await SSDB.del(m.id);
+  await ssLoad();
+  toast(bad.length ? `Removed ${bad.length} of ${links.length} links that wouldn’t load` : `✓ All ${links.length} links load`);
+  if($('#sheet').dataset.panel === 'me') openMe();
 }
 
 /* ---------- Settings (lives in the "Me" sheet) ---------- */
@@ -2195,6 +2215,7 @@ function ssSection(){
     <div class="ssmedia">${SS.media.length ? `${pics} photo${pics === 1 ? '' : 's'} · ${vids} video${vids === 1 ? '' : 's'} on this device` : 'No photos or videos yet. Add some below.'}</div>
     <input type="file" id="ssFile" accept="image/*,video/*" multiple class="hidden">
     <div class="btns"><button class="btn" id="ssPick">＋ Photos &amp; videos</button><button class="btn" id="ssLink">＋ By link</button></div>
+    ${SS.media.some(m => m.url) ? '<div class="btns"><button class="btn" id="ssPrune">Remove links that don’t load</button></div>' : ''}
     <div class="btns">${SS.media.length ? '<button class="btn danger" id="ssClear">Remove all</button>' : ''}<button class="btn primary" id="ssGo">▶ Start now</button></div>
   </div>`;
 }
@@ -2206,9 +2227,10 @@ document.addEventListener('change', e => {
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
 });
 document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('#ssPick,#ssLink,#ssClear,#ssGo'); if(!b) return;
+  const b = e.target.closest && e.target.closest('#ssPick,#ssLink,#ssClear,#ssGo,#ssPrune'); if(!b) return;
   if(b.id === 'ssPick') $('#ssFile').click();
-  else if(b.id === 'ssLink') ssAddLink(prompt('Paste a link to a photo or video (it must end in .jpg, .png, .mp4…)'));
+  else if(b.id === 'ssLink') ssAddLink(prompt('Paste a direct link to a photo or video. It must open the picture itself, not a web page. Google Photos share links won’t work; use “＋ Photos & videos” for those.'));
+  else if(b.id === 'ssPrune') ssPrune();
   else if(b.id === 'ssClear'){ if(confirm('Remove all photos and videos from this device?')) SSDB.clear().then(ssLoad).then(() => { toast('Removed'); openMe(); }); }
   else if(b.id === 'ssGo'){ closeSheet(); setTimeout(() => ssStart(true), 150); }
 });
@@ -2265,9 +2287,12 @@ function ssNext(){
     stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(S.family?.name || 'Family')}</b><span>Add photos and videos from your avatar → Screensaver</span></div>`;
     return;
   }
-  if(SS.fails > SS.media.length) return;            // everything failed to load; stop looping
+  if(SS.fails > SS.media.length){                   // nothing would load: say why instead of showing a black screen
+    stage.innerHTML = `<div class="ssempty"><span class="big">⚠️</span><b>Couldn’t load your photos</b><span>The saved links open web pages, not pictures.<br>Open your avatar → Screensaver and tap “Remove links that don’t load”,<br>then add photos with “＋ Photos &amp; videos”.</span></div>`;
+    return;
+  }
   if(++SS.idx >= SS.order.length){ ssShuffle(); SS.idx = 0; }
-  const m = SS.media[SS.order[SS.idx]], cfg = ssCfg(), url = m.url || URL.createObjectURL(m.blob);
+  const m = SS.media[SS.order[SS.idx]], cfg = ssCfg(), url = m.url ? ssUrl(m.url) : URL.createObjectURL(m.blob);
   const layer = document.createElement('div'); layer.className = 'ssl'; layer.dataset.blob = m.url ? '' : url;
   let done = false;
   const skip = () => { if(done) return; done = true; SS.fails++; if(!m.url) URL.revokeObjectURL(url); SS.advT = setTimeout(ssNext, 50); };
@@ -2293,6 +2318,7 @@ function ssNext(){
     layer.append(bg, fg);
     fg.onload = () => show(() => { SS.advT = setTimeout(ssNext, cfg.secs * 1000); });
     fg.onerror = skip;
+    bg.referrerPolicy = fg.referrerPolicy = 'no-referrer';
     bg.src = fg.src = url;
   }
 }
