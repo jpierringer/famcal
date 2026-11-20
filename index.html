@@ -90,6 +90,18 @@ main{padding:4px 16px 20px}
 .card .when{font-size:13px;font-weight:700;color:var(--c);display:flex;gap:6px;align-items:center}
 .card .ttl{font-size:18px;font-weight:700;margin:2px 0 0;padding-right:46px;letter-spacing:-.01em;word-break:break-word}
 .card .meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;color:var(--muted);font-size:14px;align-items:center}
+.gear{width:36px;height:36px;border-radius:50%;background:var(--soft);font-size:18px;display:grid;place-items:center;flex:none}
+.gear:active{transform:scale(.94)}
+.sheeth{margin:0 0 4px;font-size:22px}
+.admincard{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+.admincard > div{flex:1}
+.adminbar{display:flex;align-items:center;gap:10px}
+.adminbar .hint{display:flex;align-items:center;gap:6px}
+.adminrow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);font-weight:600}
+.adminrow > span{flex:1}
+.adminrow input{width:22px;height:22px;accent-color:var(--accent)}
+.mrow .pill.on{background:color-mix(in srgb,#f59e0b 22%,var(--soft))}
+.pill.danger{color:#dc2626}
 .kindtag{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:var(--soft);color:var(--muted)}
 .sticker{position:absolute;top:-10px;right:10px;font-size:38px;line-height:1;transform:rotate(9deg);
   filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
@@ -299,6 +311,7 @@ main{padding:4px 16px 20px}
 .colors button{width:34px;height:34px;border-radius:50%;background:var(--c)}
 .colors button.on{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--c)}
 .who{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 18px}
+.who button.on{outline:3px solid var(--accent);outline-offset:-3px}
 .who button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px;border-radius:16px;background:var(--card);box-shadow:var(--shadow);font-weight:700}
 .err{color:var(--bad);font-weight:600;text-align:center;min-height:22px;margin:6px 0}
 .back{color:var(--muted);font-weight:600;padding:6px 0}
@@ -380,7 +393,7 @@ main{padding:4px 16px 20px}
   body{padding:0 0 0 300px}
   .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:300px;overflow:auto;padding:22px 18px 28px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--card) 55%,var(--bg));z-index:25}
   .desk{display:inline-flex}
-  .tabs,#meBtn,.top .week,.top .filters,.grab{display:none!important}
+  .tabs,#meBtn,#setBtn,.top .week,.top .filters,.grab{display:none!important}
   .banner{margin:12px 28px 0}
   .top{padding:20px 28px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
   .toprow{gap:12px}
@@ -645,7 +658,8 @@ main{padding:4px 16px 20px}
     <div class="spacer"></div>
     <button class="pill penchip hidden" id="penChip" aria-label="Put the pen down"></button>
     <button class="pill" id="todayBtn">Today</button>
-    <button id="meBtn" aria-label="Me and family"></button>
+    <button id="setBtn" class="gear" aria-label="Settings" data-settings>⚙️</button>
+    <button id="meBtn" aria-label="Me"></button>
   </div>
   <div class="week" id="week"></div>
   <div class="filters" id="filters"></div>
@@ -944,7 +958,9 @@ function parseQuick(raw, opts={}){
 /* ========================= State ========================= */
 const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false, media:[], mediaMissing:true };
 let B; // backend
-const member = id => S.members.find(m => m.id === id);
+const member = id => (S.allMembers || S.members).find(m => m.id === id);
+const isAdmin = m => !!(m && m.is_admin);
+const admins = () => S.members.filter(isAdmin);
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
 const isSecret = ev => ev.kind === 'private' || !!ev.is_private;
 const hidden = ev => isSecret(ev) && ev.owner_id !== S.me?.id && !(ev.invitees || []).includes(S.me?.id);
@@ -973,7 +989,7 @@ function LocalBackend(){
   save();
   function seed(){
     const t = todayStr(), now = new Date().toISOString();
-    const M = [{id:'m1',name:'Dad',emoji:'🧔',color:'#3b82f6'},{id:'m2',name:'Mom',emoji:'👩',color:'#ec4899'},{id:'m3',name:'Ava',emoji:'👧',color:'#10b981'},{id:'m4',name:'Sam',emoji:'👦',color:'#f59e0b'}];
+    const M = [{id:'m1',name:'Dad',emoji:'🧔',color:'#3b82f6',is_admin:true},{id:'m2',name:'Mom',emoji:'👩',color:'#ec4899'},{id:'m3',name:'Ava',emoji:'👧',color:'#10b981'},{id:'m4',name:'Sam',emoji:'👦',color:'#f59e0b'}];
     const E = (o) => ({id:uid(), family_id:'f1', notes:null, place:null, start_time:null, end_time:null, sticker:null, invitees:[], created_at:now, ...o});
     const g = E({kind:'list', owner_id:'m2', title:'Groceries', starts_on:null, sticker:'🛒'});
     const pack = E({kind:'list', owner_id:'m1', title:'Camping packing', starts_on:addDays(t,4), sticker:'🏕️'});
@@ -994,6 +1010,12 @@ function LocalBackend(){
       reactions:[{event_id:bday.id, member_id:'m3', family_id:'f1', sticker:'🥳'},{event_id:bday.id, member_id:'m4', family_id:'f1', sticker:'🎉'}],
     };
   }
+  function demoAdmin(a){
+    const m = db.members.find(x => x.id === a.id);
+    if(!m || !m.is_admin || m.removed_at) throw Object.assign(new Error('Only a calendar admin can do that'), {pin:true});
+    if(!/^[0-9]{4,6}$/.test(a.pin || '')) throw Object.assign(new Error('Wrong PIN'), {pin:true});
+  }
+  if(!db.members.some(m => m.is_admin)){ db.members[0].is_admin = true; save(); }   // demo data saved before admins existed
   return {
     mode:'demo',
     async start(){ return db.meId; },
@@ -1018,7 +1040,18 @@ function LocalBackend(){
     async setReaction(eid, st, on){ db.reactions = db.reactions.filter(r => !(r.event_id===eid && r.member_id===db.meId && r.sticker===st)); if(on) db.reactions.push({event_id:eid, member_id:db.meId, family_id:db.family.id, sticker:st}); save(); },
     async updateMe(p){ Object.assign(db.members.find(m => m.id===db.meId), p); save(); },
     async updateFamily(p){ Object.assign(db.family, p); save(); },
-    async addMember(m){ db.members.push({id:uid(), name:m.name, emoji:m.emoji, color:m.color}); save(); },
+    // demo has no PINs: any 4–6 digits unlock admin; the same safety rules as the database apply
+    async adminVerify(a){ demoAdmin(a); },
+    async addMember(m, a){ demoAdmin(a); db.members.push({id:uid(), name:m.name, emoji:m.emoji, color:m.color}); save(); },
+    async removeMember(id, a){ demoAdmin(a); const m = db.members.find(x => x.id === id);
+      if(id === db.meId) throw new Error('This device is signed in as that person. Sign in as someone else first.');
+      if(m.is_admin && db.members.filter(x => x.is_admin && !x.removed_at).length <= 1) throw new Error('Make someone else an admin first');
+      Object.assign(m, {removed_at:new Date().toISOString(), is_admin:false}); save(); },
+    async restoreMember(id, pin, a){ demoAdmin(a); delete db.members.find(x => x.id === id).removed_at; save(); },
+    async setAdmin(id, on, a){ demoAdmin(a); if(!on && !db.members.some(x => x.is_admin && !x.removed_at && x.id !== id)) throw new Error('The family needs at least one admin');
+      db.members.find(x => x.id === id).is_admin = on; save(); },
+    async setAllowJoin(on, a){ demoAdmin(a); db.family.allow_join = on; save(); },
+    async newCode(a){ demoAdmin(a); db.family.code = Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join(''); save(); return db.family.code; },
     async switchMember(id){ db.meId = id; save(); },
     async reset(){ localStorage.removeItem(KEY); },
     notify(){},
@@ -1038,6 +1071,11 @@ const PHOTO_STORE = {
   },
   async remove(sb, paths){ const { error } = await sb.storage.from(PHOTO_BUCKET).remove(paths); if(error) throw new Error(error.message); },
 };
+function adminOk(r){                         // admin functions answer {ok, error} so a wrong PIN still counts toward the lock
+  if(r && r.ok) return r;
+  const msg = (r && r.error) || 'Run the latest schema.sql in Supabase to use admin settings';
+  throw Object.assign(new Error(msg), { pin: /Wrong PIN|Too many|Only a calendar admin/.test(msg) });
+}
 async function fnError(err){ try{ const j = await err.context.json(); return j.error || err.message; }catch(e){ return err.message || 'Notification service unavailable'; } }
 function SupaBackend(){
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db:{ schema:SCHEMA }, auth:{ persistSession:true, autoRefreshToken:true } });
@@ -1060,7 +1098,7 @@ function SupaBackend(){
       const since = addDays(todayStr(), -60);
       const [fam, members, events, items, rsvps, reactions, privs] = await Promise.all([
         sb.from('families').select('*').maybeSingle(),
-        sb.from('members').select('id,name,emoji,color,created_at').order('created_at'),
+        sb.from('members').select('*').order('created_at'),
         sb.from('events').select('*').or(`starts_on.is.null,starts_on.gte.${since}`),
         sb.from('list_items').select('*'),
         sb.from('rsvps').select('*'),
@@ -1117,7 +1155,14 @@ function SupaBackend(){
     },
     async updateMe(p){ ok(await sb.from('members').update(p).eq('id', meId)); },
     async updateFamily(p){ ok(await sb.from('families').update(p).eq('id', famId)); },
-    async addMember(m){ await rpc('add_member', {p_name:m.name, p_emoji:m.emoji, p_color:m.color, p_pin:m.pin}); },
+    // ---- admin: every call carries an admin's id + PIN; the database checks it each time ----
+    async adminVerify(a){ adminOk(await rpc('admin_verify', {p_admin:a.id, p_admin_pin:a.pin})); },
+    async addMember(m, a){ adminOk(await rpc('add_member', {p_name:m.name, p_emoji:m.emoji, p_color:m.color, p_pin:m.pin, p_admin:a.id, p_admin_pin:a.pin})); },
+    async removeMember(id, a){ adminOk(await rpc('remove_member', {p_admin:a.id, p_admin_pin:a.pin, p_member:id})); },
+    async restoreMember(id, pin, a){ adminOk(await rpc('restore_member', {p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_pin:pin})); },
+    async setAdmin(id, on, a){ adminOk(await rpc('set_admin', {p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_on:on})); },
+    async setAllowJoin(on, a){ adminOk(await rpc('set_allow_join', {p_admin:a.id, p_admin_pin:a.pin, p_on:on})); },
+    async newCode(a){ return adminOk(await rpc('new_family_code', {p_admin:a.id, p_admin_pin:a.pin})).code; },
     async signOut(){ await sb.from('devices').delete().eq('user_id', (await sb.auth.getUser()).data.user.id); await sb.auth.signOut(); },
     notify(body){ sb.functions.invoke(PUSH_FN, {body}).then(r => { if(r.error) console.warn('notify', r.error); }).catch(()=>{}); },
     async savePush(sub, prefs){ const j = sub.toJSON(); await rpc('save_push_sub', {p_endpoint:j.endpoint, p_p256dh:j.keys.p256dh, p_auth:j.keys.auth, p_prefs:prefs, p_ua:navigator.userAgent}); },
@@ -1137,16 +1182,16 @@ function SupaBackend(){
 /* ========================= Loading ========================= */
 async function refresh(){
   const d = await B.load();
-  Object.assign(S, { family:d.family, members:d.members, events:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
+  Object.assign(S, { family:d.family, allMembers:d.members, members:d.members.filter(m => !m.removed_at), events:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
     custom:(d.custom||[]).map(c => ({...c, words:(c.keywords||'').split(',').map(w => w.trim()).filter(Boolean)})), customMissing:!!d.customMissing,
     media:d.media || [], mediaMissing: !d.media });
-  S.me = member(d.meId);
+  S.me = S.members.find(m => m.id === d.meId);
   if(!S.me) throw new Error('not-member');
   render();
   if(S.openId) S.events.some(e => e.id===S.openId) ? openDetail(S.openId, true) : closeSheet();
   photoSyncSoon();
 }
-let rT; const liveRefresh = () => { clearTimeout(rT); rT = setTimeout(() => refresh().catch(()=>{}), 250); };
+let rT; const liveRefresh = () => { clearTimeout(rT); rT = setTimeout(() => refresh().catch(e => { if(e.message === 'not-member') location.reload(); }), 250); };   // removed from the family → back to the sign-in screen
 
 /* ========================= Rendering ========================= */
 const mqDesk = matchMedia('(min-width:900px)'), mqWide = matchMedia('(min-width:1200px)');
@@ -1190,7 +1235,7 @@ function renderSide(){
   const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(t,-7))).map(view)
     .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
   el.innerHTML = `
-    <div class="brand"><img src="${APP_ICON}" alt=""><b>${esc(S.family?.name || 'Family')}</b><button data-me aria-label="Me and family">${avatar(S.me)}</button></div>
+    <div class="brand"><img src="${APP_ICON}" alt=""><b>${esc(S.family?.name || 'Family')}</b><button class="gear" data-settings aria-label="Settings" title="Settings">⚙️</button><button data-me aria-label="Me" title="You">${avatar(S.me)}</button></div>
     <button class="newbtn" data-new>＋ New <kbd>N</kbd></button>
     <button class="snav ${S.tab==='cal'?'on':''}" data-tab="cal"><span>📅</span>Calendar</button>
     <button class="snav ${S.tab==='lists'?'on':''}" data-tab="lists"><span>☑️</span>Lists<small>${lists.length || ''}</small></button>
@@ -1866,16 +1911,16 @@ function pushEnable(btn){
     toast('🔔 Notifications on');
     B.testPush().catch(e => toast('⚠️ ' + e.message));
   }).catch(e => toast('⚠️ ' + e.message))
-    .finally(() => { P.busy = false; render(); if($('#sheet').dataset.panel === 'me') openMe(); });
+    .finally(() => { P.busy = false; render(); reopenSettings(); });
 }
 async function pushDisable(){
   const s = P.sub; P.sub = null;
   try{ await B.deletePush(s.endpoint); }catch(e){}
   try{ await s.unsubscribe(); }catch(e){}
-  toast('🔕 Notifications off'); openMe(); render();
+  toast('🔕 Notifications off'); reopenSettings(); render();
 }
 function pushToggle(key){
-  P.prefs[key] = !P.prefs[key]; openMe();
+  P.prefs[key] = !P.prefs[key]; reopenSettings();
   B.savePush(P.sub, P.prefs).catch(e => toast('⚠️ ' + e.message));
 }
 function pushSection(){
@@ -1899,27 +1944,116 @@ function openFromLink(id){
 }
 
 /* ========================= Me / family sheet ========================= */
-function openMe(){
+function openMe(){                              // the avatar button: just you (name, face, color)
   const me = S.me;
-  let h = `<div style="display:flex;align-items:center;gap:12px">${avatar(me,'lg')}<div style="flex:1"><label class="namefield"><input class="field" id="meName" value="${esc(me.name)}" maxlength="40" placeholder="Your name" autocomplete="off" enterkeyhint="done" style="margin:0"><span>✏️</span></label><div class="hint" style="margin:4px 2px 0">Tap to change your name</div></div></div>
+  const h = `<div style="display:flex;align-items:center;gap:12px">${avatar(me,'lg')}<div style="flex:1"><label class="namefield"><input class="field" id="meName" value="${esc(me.name)}" maxlength="40" placeholder="Your name" autocomplete="off" enterkeyhint="done" style="margin:0"><span>✏️</span></label><div class="hint" style="margin:4px 2px 0">Tap to change your name${isAdmin(me) ? ' · <b>Admin</b>' : ''}</div></div></div>
     <div class="lbl">Your avatar</div>${avatarPicker(me.emoji, 'me')}
     <div class="lbl">Your color</div><div class="colors">${COLORS.map(c => `<button class="${c===me.color?'on':''}" style="--c:${c}" data-mecolor="${c}"></button>`).join('')}</div>
-    <div class="lbl">Shared display</div>${ssSection()}
-    ${sharedPhotos() ? `<div class="lbl">📷 Family photos</div>${photosSection()}` : ''}
-    <div class="lbl">Notifications</div>${pushSection()}
-    <div class="lbl">Family stickers</div>${stickersSection()}
-    <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
-    <div class="codebox"><b>${esc(S.family?.code || '')}</b><button class="pill" id="shareCode">Share</button></div>
-    <div class="lbl">Family</div>
-    ${S.members.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}</b>${m.id===me.id ? '<span class="kindtag">You</span>' : (B.mode==='demo' ? `<button class="pill" data-viewas="${m.id}">View as</button>` : '')}</div>`).join('')}
-    <button class="btn" style="width:100%;margin-top:8px" id="addKid">＋ Add someone without a phone</button>`;
-  h += B.mode === 'demo'
-    ? `<div class="btns"><button class="btn danger" id="resetDemo">Reset demo</button></div>`
-    : `<div class="btns"><button class="btn danger" id="signOut">Sign out on this phone</button></div>`;
+    <button class="btn" style="width:100%;margin-top:22px" data-settings>⚙️ Settings</button>`;
   const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'me' ? $('#sheet').scrollTop : 0;
   openSheet(h); $('#sheet').dataset.panel = 'me'; $('#sheet').scrollTop = keep;
 }
+function openSettings(){                        // the ⚙️ button: this device, the family, and the locked admin area
+  const me = S.me, ad = admins();
+  let h = `<h3 class="sheeth">⚙️ Settings</h3>
+    <div class="lbl">Notifications</div>${pushSection()}
+    <div class="lbl">Shared display</div>${ssSection()}
+    ${sharedPhotos() ? `<div class="lbl">📷 Family photos</div>${photosSection()}` : ''}
+    <div class="lbl">Family stickers</div>${stickersSection()}
+    <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
+    <div class="codebox"><b>${esc(S.family?.code || '')}</b><button class="pill" id="shareCode">Share</button></div>
+    <div class="hint" style="margin:6px 2px 0">${S.family?.allow_join === false ? 'Family members use this code to sign in on a new phone. New people can’t join with it right now; an admin adds them.' : 'Family members use this code to sign in on a new phone, and new people can use it to join.'}</div>
+    <div class="lbl">Family</div>
+    ${S.members.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}</b>${isAdmin(m) ? '<span class="kindtag">Admin</span>' : ''}${m.id===me.id ? '<span class="kindtag">You</span>' : (B.mode==='demo' ? `<button class="pill" data-viewas="${m.id}">View as</button>` : '')}</div>`).join('')}
+    <div class="lbl">🔒 Admin</div>
+    <div class="admincard"><div><b>Add or remove people</b><div class="hint" style="margin:2px 0 0">Needs an admin’s PIN${ad.length ? ` (${ad.map(m => esc(firstName(m.name))).join(', ')})` : ''}.</div></div>
+      <button class="btn" data-admin>${adminOpen() ? '🔓 Open' : 'Unlock'}</button></div>`;
+  h += B.mode === 'demo'
+    ? `<div class="btns"><button class="btn danger" id="resetDemo">Reset demo</button></div>`
+    : `<div class="btns"><button class="btn danger" id="signOut">Sign out on this ${ssCfg().display ? 'screen' : 'phone'}</button></div>`;
+  const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'settings' ? $('#sheet').scrollTop : 0;
+  openSheet(h); $('#sheet').dataset.panel = 'settings'; $('#sheet').scrollTop = keep;
+}
+function reopenSettings(){ const p = $('#sheet').dataset.panel; if(p === 'me') openMe(); else if(p === 'settings') openSettings(); else if(p === 'admin') openAdmin(); }
+
+/* ========================= Admin (proof of identity) =========================
+   Protected changes need an admin's PIN. It's checked by the database on EVERY change (not just here),
+   so the lock can't be skipped. Unlocking doesn't change who this device is signed in as, so it works on
+   the shared display too. It locks again after 3 minutes without an admin change, or when the screensaver starts. */
+const ADMIN = { id:null, pin:'', until:0, pick:null };
+const ADMIN_MS = 3 * 60000;
+const adminOpen = () => !!ADMIN.id && Date.now() < ADMIN.until && isAdmin(member(ADMIN.id));
+function adminLock(quiet){ const was = !!ADMIN.id; Object.assign(ADMIN, { id:null, pin:'', until:0 }); if(was && !quiet) toast('🔒 Admin locked'); }
+function openAdminGate(err){
+  if(adminOpen()) return openAdmin();
+  const ad = admins();
+  if(!ad.length) return toast('⚠️ Run the latest schema.sql in Supabase to use admin settings');
+  if(!ad.some(m => m.id === ADMIN.pick)) ADMIN.pick = (ad.find(m => m.id === S.me.id) || ad[0]).id;
+  const a = member(ADMIN.pick);
+  openSheet(`<h3 class="sheeth">🔒 Admin</h3>
+    <p style="color:var(--muted);margin:6px 0 8px">Adding or removing people needs an admin’s PIN.</p>
+    ${ad.length > 1 ? `<div class="who">${ad.map(m => `<button class="${m.id === ADMIN.pick ? 'on' : ''}" data-adminpick="${m.id}">${avatar(m, 'lg')}${esc(firstName(m.name))}</button>`).join('')}</div>`
+      : `<div style="text-align:center">${avatar(a, 'lg')}<div style="font-weight:800;margin-top:4px">${esc(a.name)}</div></div>`}
+    <input class="field" id="adminPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="${B.mode === 'demo' ? 'Any 4 digits in the demo' : esc(firstName(a.name)) + '’s PIN'}" style="text-align:center;letter-spacing:.4em;font-size:24px;margin-top:12px">
+    <div class="err">${esc(err || '')}</div>
+    <div class="btns"><button class="btn" data-settings>Back</button><button class="btn primary" data-adminunlock>Unlock</button></div>`);
+  $('#sheet').dataset.panel = 'admingate';
+  setTimeout(() => { const i = $('#adminPin'); i && i.focus(); }, 80);
+}
+async function adminUnlock(btn){
+  const pin = ($('#adminPin').value || '').trim(); if(!pin) return openAdminGate('Enter the PIN');
+  btn.disabled = true;
+  try{ await B.adminVerify({ id:ADMIN.pick, pin }); }catch(e){ return openAdminGate(e.message); }
+  Object.assign(ADMIN, { id:ADMIN.pick, pin, until:Date.now() + ADMIN_MS }); openAdmin();
+}
+async function adminDo(fn, okMsg){              // run one protected change with the unlocked admin's PIN
+  if(!adminOpen()){ adminLock(true); return openAdminGate('Locked after a few minutes. Enter the PIN again.'); }
+  try{ const r = await fn({ id:ADMIN.id, pin:ADMIN.pin }); ADMIN.until = Date.now() + ADMIN_MS; await refresh(); if(okMsg) toast(okMsg); openAdmin(); return r; }
+  catch(e){ if(e.pin){ adminLock(true); return openAdminGate(e.message); } toast('⚠️ ' + e.message); }
+}
+function openAdmin(){
+  if(!adminOpen()) return openAdminGate();
+  const a = member(ADMIN.id), gone = (S.allMembers || []).filter(m => m.removed_at), open = S.family?.allow_join !== false;
+  const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'admin' ? $('#sheet').scrollTop : 0;
+  openSheet(`<div class="adminbar"><h3 class="sheeth" style="flex:1">🔓 Admin</h3><span class="hint" style="margin:0">${avatar(a, 'sm')} ${esc(firstName(a.name))}</span><button class="pill" data-adminlock>🔒 Lock</button></div>
+    <div class="lbl">People with access</div>
+    ${S.members.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}${m.id === S.me.id ? ' <small class="hint">(this device)</small>' : ''}</b>
+      <button class="pill ${isAdmin(m) ? 'on' : ''}" data-setadmin="${m.id}" aria-pressed="${isAdmin(m)}">${isAdmin(m) ? '⭐ Admin' : 'Make admin'}</button>
+      ${m.id === S.me.id ? '' : `<button class="pill danger" data-rmmember="${m.id}">Remove</button>`}</div>`).join('')}
+    <button class="btn" style="width:100%;margin-top:8px" id="addKid">＋ Add someone without a phone</button>
+    ${gone.length ? `<div class="lbl">Removed</div>
+    ${gone.map(m => `<div class="mrow" style="opacity:.75">${avatar(m)}<b style="flex:1">${esc(m.name)}</b><button class="pill" data-restore="${m.id}">Give access again</button></div>`).join('')}` : ''}
+    <div class="lbl">Invite code</div>
+    <label class="ssrow adminrow"><span>New people can join with the code</span><input type="checkbox" id="adminJoin" ${open ? 'checked' : ''}></label>
+    <div class="hint" style="margin:4px 0 0">${open ? 'Anyone who has the code can add themselves to the family.' : 'Only an admin can add people. Family members can still sign in on a new phone with the code and their PIN.'}</div>
+    <div class="codebox" style="margin-top:10px"><b>${esc(S.family?.code || '')}</b><button class="pill" id="adminNewCode">New code</button></div>
+    <div class="hint" style="margin:6px 0 0">A new code stops the old one from working. Phones already signed in stay signed in.</div>
+    <div class="btns"><button class="btn" data-settings>Back to settings</button></div>`);
+  $('#sheet').dataset.panel = 'admin'; $('#sheet').scrollTop = keep;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-settings],[data-admin],[data-adminpick],[data-adminunlock],[data-adminlock],[data-setadmin],[data-rmmember],[data-restore],#adminNewCode'); if(!t) return;
+  const d = t.dataset;
+  if(d.settings !== undefined) openSettings();
+  else if(d.admin !== undefined) openAdminGate();
+  else if(d.adminpick){ const v = $('#adminPin')?.value || ''; ADMIN.pick = d.adminpick; openAdminGate(); $('#adminPin').value = v; }
+  else if(d.adminunlock !== undefined) adminUnlock(t);
+  else if(d.adminlock !== undefined){ adminLock(); openSettings(); }
+  else if(d.setadmin){ const m = member(d.setadmin), on = !isAdmin(m);
+    if(on || confirm(`Remove admin from ${m.name}?`)) adminDo(a => B.setAdmin(m.id, on, a), on ? `⭐ ${firstName(m.name)} is an admin` : `${firstName(m.name)} is no longer an admin`); }
+  else if(d.rmmember){ const m = member(d.rmmember);
+    if(confirm(`Remove ${m.name}'s access?\n\nThey'll be signed out on every device and can't see the calendar. Events they made stay. You can give access again later.`))
+      adminDo(a => B.removeMember(m.id, a), `${m.emoji} ${firstName(m.name)} removed`); }
+  else if(d.restore){ const m = member(d.restore);
+    const pin = (prompt(`New 4–6 digit PIN for ${m.name}. They'll use it with the family code to sign in.`) || '').trim(); if(!pin) return;
+    if(!/^[0-9]{4,6}$/.test(pin)) return toast('⚠️ PIN must be 4–6 digits');
+    adminDo(a => B.restoreMember(m.id, pin, a), `${m.emoji} ${firstName(m.name)} can sign in again`); }
+  else if(t.id === 'adminNewCode'){ if(confirm('Make a new invite code? The current code will stop working.')) adminDo(a => B.newCode(a), '🔑 New code ready'); }
+});
+document.addEventListener('change', e => { if(e.target.id === 'adminJoin'){ const on = e.target.checked; adminDo(a => B.setAllowJoin(on, a), on ? 'New people can join with the code' : 'Only admins can add people now'); } });
+document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id === 'adminPin'){ e.preventDefault(); const b = document.querySelector('[data-adminunlock]'); b && b.click(); } });
 function openAddMember(){
+  if(!adminOpen()) return openAdminGate();
   const st = {emoji:'👶', color:COLORS[S.members.length % COLORS.length]};
   const draw = () => openSheet(`<h3>Add family member</h3><p style="color:var(--muted);margin:6px 0 14px">They can be @tagged now and sign in later with the family code + this PIN.</p>
     <input class="field" id="kName" placeholder="Name">
@@ -1935,8 +2069,10 @@ function openAddMember(){
     if(t.dataset.kcolor){ st.color = t.dataset.kcolor; const n = $('#kName').value; draw(); $('#kName').value = n; }
     if(t.id === 'kSave'){
       const name = $('#kName').value.trim(); if(!name) return $('#kName').focus();
-      try{ await B.addMember({name, emoji:st.emoji, color:st.color, pin:$('#kPin')?.value || '0000'}); $('#sheet').onclick = null; closeSheet(); await refresh(); toast(`${st.emoji} ${name} added`); }
-      catch(err){ toast('⚠️ ' + err.message); }
+      if(!adminOpen()){ $('#sheet').onclick = null; return openAdminGate('Locked after a few minutes. Enter the PIN again.'); }
+      try{ await B.addMember({name, emoji:st.emoji, color:st.color, pin:$('#kPin')?.value || '0000'}, { id:ADMIN.id, pin:ADMIN.pin }); ADMIN.until = Date.now() + ADMIN_MS;
+        $('#sheet').onclick = null; await refresh(); toast(`${st.emoji} ${name} added`); openAdmin(); }
+      catch(err){ if(err.pin){ $('#sheet').onclick = null; adminLock(true); return openAdminGate(err.message); } toast('⚠️ ' + err.message); }
     }
   };
 }
@@ -2069,7 +2205,7 @@ document.addEventListener('click', e => {
     act(() => B.saveEvent({...v, countdown:on}), () => { S.events.find(e => e.id === d.cdtoggle).countdown = on; });
     toast(on ? `⏳ ${cdShort(daysUntil(v.starts_on))} to go!` : 'Countdown off'); return; }
   if(d.delstk){ const c = S.custom.find(x => x.id === d.delstk);
-    if(c && confirm(`Remove ${c.emoji} from the family stickers? Events already using it keep it.`)) B.deleteSticker(c.id).then(refresh).then(() => { openMe(); toast('Sticker removed'); }).catch(e => toast('⚠️ ' + e.message));
+    if(c && confirm(`Remove ${c.emoji} from the family stickers? Events already using it keep it.`)) B.deleteSticker(c.id).then(refresh).then(() => { reopenSettings(); toast('Sticker removed'); }).catch(e => toast('⚠️ ' + e.message));
     return; }
   if(d.pushon !== undefined){ pushEnable(t); return; }
   if(d.pref){ pushToggle(d.pref); return; }
@@ -2149,7 +2285,7 @@ async function saveMyName(input){
   const name = input.value.trim().replace(/\s+/g, ' ');
   if(!name){ input.value = S.me.name; return; }
   if(name === S.me.name) return;
-  try{ await B.updateMe({name}); S.me.name = name; await refresh(); if($('#sheet').dataset.panel === 'me') openMe(); toast('✓ Name saved'); }
+  try{ await B.updateMe({name}); S.me.name = name; await refresh(); reopenSettings(); toast('✓ Name saved'); }
   catch(e){ input.value = S.me.name; toast('⚠️ ' + e.message); }
 }
 document.addEventListener('change', e => { if(e.target.id === 'meName') saveMyName(e.target); });
@@ -2263,7 +2399,7 @@ async function ssAddFiles(files){
   }
   await ssLoad();
   toast(n ? `✓ Added ${n}${bad ? ` · ${bad} skipped (too big or unsupported)` : ''}` : '⚠️ Nothing added (videos over 200 MB are skipped)');
-  if($('#sheet').dataset.panel === 'me') openMe();
+  reopenSettings();
 }
 // Google Photos / Drive / Dropbox "share" links open a web page, not a picture, so they can never show in the reel.
 const ssIsPage = u => /^https?:\/\/(photos\.app\.goo\.gl|photos\.google\.com|goo\.gl\/photos|drive\.google\.com|(www\.)?dropbox\.com|1drv\.ms|onedrive\.live\.com|icloud\.com|share\.icloud\.com)\b/i.test(u);
@@ -2277,7 +2413,7 @@ async function ssAddLink(url){
   const type = /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url) ? 'video' : 'image';
   if(type === 'image'){ toast('Checking the link…'); if(!await ssProbe(url)) return alert('That link didn’t load as a picture. It has to open the photo file itself, not a web page.'); }
   await SSDB.put({ id:uid(), type, url, name:url, added:Date.now() });
-  await ssLoad(); toast('✓ Link added'); if($('#sheet').dataset.panel === 'me') openMe();
+  await ssLoad(); toast('✓ Link added'); reopenSettings();
 }
 async function ssPrune(){
   const links = SS.media.filter(m => m.url && m.type === 'image'); if(!links.length) return toast('No picture links to check');
@@ -2288,7 +2424,7 @@ async function ssPrune(){
   for(const m of bad) await SSDB.del(m.id);
   await ssLoad();
   toast(bad.length ? `Removed ${bad.length} of ${links.length} links that wouldn’t load` : `✓ All ${links.length} links load`);
-  if($('#sheet').dataset.panel === 'me') openMe();
+  reopenSettings();
 }
 
 /* ---------- Shared family photos ----------
@@ -2336,7 +2472,7 @@ async function photosAdd(files){
   await refresh().catch(()=>{}); await ssLoad();
   const parts = [added ? `✓ Shared ${added} photo${added === 1 ? '' : 's'} with the family` : '', dup ? `${dup} already shared` : '', bad ? `${bad} couldn’t upload${/HEIC/i.test(lastErr) ? ` (${lastErr})` : ''}` : ''].filter(Boolean);
   toast(stopped ? (added ? `✓ Shared ${added}. ` : '') + stopped : parts.join(' · ') || 'Nothing new to add');
-  if($('#sheet').dataset.panel === 'me') openMe(); else if($('#sheet').dataset.panel === 'photos') openPhotos();
+  if($('#sheet').dataset.panel === 'photos') openPhotos(); else reopenSettings();
 }
 
 const PSYNC = { busy:false, again:false, t:null };
@@ -2359,7 +2495,7 @@ async function photoSync(){                  // make this display's photo store 
           await SSDB.put({ id:'sh:' + r.id, mid:r.id, type:'image', blob:await res.blob(), name:'', shared:true, added:Date.parse(r.added_at) || Date.now() }); changed = true; }catch(e){}
       }));
     }
-    if(changed){ await ssLoad(); if($('#sheet').dataset.panel === 'me') openMe(); }
+    if(changed){ await ssLoad(); reopenSettings(); }
   }catch(e){ console.warn('photo sync', e); }
   finally{ PSYNC.busy = false; if(PSYNC.again){ PSYNC.again = false; photoSync(); } }
 }
@@ -2433,7 +2569,7 @@ document.addEventListener('change', e => {
   const t = e.target;
   if(t.dataset && t.dataset.ssToggle === 'shared'){ t.checked ? penEnable(t) : penOff(); }
   else if(t.dataset && t.dataset.ssToggle === 'display') ssDisplay(t.checked);
-  else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); openMe(); }
+  else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); reopenSettings(); }
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
   else if(t.dataset && t.dataset.ssSet) ssSave({ [t.dataset.ssSet]: +t.value });
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
@@ -2452,7 +2588,7 @@ document.addEventListener('click', e => {
   else if(b.id === 'ssLink') ssAddLink(prompt('Paste a direct link to a photo or video. It must open the picture itself, not a web page. Google Photos share links won’t work; use “＋ Photos & videos” for those.'));
   else if(b.id === 'ssPrune') ssPrune();
   else if(b.id === 'ssClear'){ if(confirm(sharedPhotos() ? 'Remove the videos and photos that were added only on this device? Shared family photos stay.' : 'Remove all photos and videos from this device?'))
-    (async () => { for(const m of SS.media) if(!m.mid) await SSDB.del(m.id); await ssLoad(); toast('Removed'); openMe(); })(); }
+    (async () => { for(const m of SS.media) if(!m.mid) await SSDB.del(m.id); await ssLoad(); toast('Removed'); reopenSettings(); })(); }
   else if(b.id === 'ssGo'){ closeSheet(); setTimeout(() => ssStart(true), 150); }
 });
 
@@ -2548,6 +2684,7 @@ function ssNext(){
 /* ---------- Start / stop / idle ---------- */
 async function ssWake(){ try{ if('wakeLock' in navigator && !SS.wake) SS.wake = await navigator.wakeLock.request('screen'); }catch(e){} }
 function ssStart(manual){
+  adminLock(true);                       // never leave admin unlocked on an unattended wall screen
   if(SS.on || !S.me) return;
   SS.on = true; SS.since = Date.now(); SS.fails = 0; clearTimeout(SS.idleT);
   if(PEN.who) penDown(true);
@@ -2662,14 +2799,14 @@ async function penEnable(box){                  // turning the shared-screen set
     if(!pin){ box.checked = false; return; }
     try{ await B.claim(S.family.code, me.id, pin); }catch(e){ box.checked = false; return toast('⚠️ ' + e.message); }
   }
-  ssSave({ shared:true, homeId:me.id, homePin:pin }); toast('✏️ Ask who’s writing is on'); if($('#sheet').dataset.panel === 'me') openMe();
+  ssSave({ shared:true, homeId:me.id, homePin:pin }); toast('✏️ Ask who’s writing is on'); reopenSettings();
 }
 async function ssDisplay(on){
   if(on){ ssSave({ display:true }); toast('🖼️ Shared display on'); }
   else{ if(ssCfg().shared) await penOff(true); if(SS.on) ssStop(); ssSave({ display:false, enabled:false }); toast('Shared display off'); }
-  if($('#sheet').dataset.panel === 'me') openMe();
+  reopenSettings();
 }
-async function penOff(quiet){ await penDown(true); ssSave({ shared:false, homeId:null, homePin:'' }); if(!quiet){ toast('Ask who’s writing is off'); if($('#sheet').dataset.panel === 'me') openMe(); } }
+async function penOff(quiet){ await penDown(true); ssSave({ shared:false, homeId:null, homePin:'' }); if(!quiet){ toast('Ask who’s writing is off'); reopenSettings(); } }
 document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('[data-penpick],[data-pengo],[data-pencancel],#penChip'); if(!t) return;
   if(t.dataset.penpick){ B.mode === 'supabase' ? penPin(t.dataset.penpick) : penTake(t.dataset.penpick); }
