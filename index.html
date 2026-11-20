@@ -2183,8 +2183,34 @@ const SSDB = (() => {
 async function ssLoad(){ try{ SS.media = (await SSDB.all()).sort((a,b) => a.added - b.added); }catch(e){ SS.media = []; } if(SS.on) ssShuffle(); }
 
 // Photos are shrunk to ~2000px before saving so a few hundred fit comfortably on the tablet.
+/* iPhone photos (and Google Photos downloads of them) are often HEIC. Safari reads them natively;
+   Chrome on Windows/Android can't, and Windows may not even label them as images. So: recognise them by
+   name, try the browser first, and only if that fails load a small converter (heic2any) on first use. */
+const HEIC_LIB = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+const isHeic = f => /\.(heic|heif)$/i.test(f.name || '') || /image\/hei[cf]/i.test(f.type || '');
+const isImageFile = f => (f.type || '').startsWith('image/') || isHeic(f) || /\.(jpe?g|png|gif|webp|avif|bmp)$/i.test(f.name || '');
+const isVideoFile = f => (f.type || '').startsWith('video/') || /\.(mp4|mov|m4v|webm)$/i.test(f.name || '');
+let heicLoading = null;
+function loadHeic(){
+  if(window.heic2any) return Promise.resolve(window.heic2any);
+  return heicLoading || (heicLoading = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = HEIC_LIB; sc.async = true;
+    sc.onload = () => window.heic2any ? res(window.heic2any) : rej(new Error('HEIC converter didn’t load'));
+    sc.onerror = () => { heicLoading = null; rej(new Error('Couldn’t load the HEIC converter (check the internet connection)')); };
+    document.head.appendChild(sc);
+  }));
+}
+async function decodeImage(f){               // -> ImageBitmap, converting HEIC when the browser can't read it
+  try{ return await createImageBitmap(f); }
+  catch(e){
+    if(!isHeic(f)) throw e;
+    const heic2any = await loadHeic();
+    const out = await heic2any({ blob:f, toType:'image/jpeg', quality:.92 });
+    return createImageBitmap(Array.isArray(out) ? out[0] : out);
+  }
+}
 async function ssShrink(f){
-  let bmp; try{ bmp = await createImageBitmap(f); }catch(e){ return f; }
+  let bmp; try{ bmp = await decodeImage(f); }catch(e){ if(isHeic(f)) throw e; return f; }
   const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
   if(k === 1 && f.size < 600 * 1024){ bmp.close && bmp.close(); return f; }
   const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
@@ -2196,8 +2222,8 @@ async function ssAddFiles(files){
   toast('Adding…');
   for(const f of files){
     try{
-      if(f.type.startsWith('image/')) await SSDB.put({ id:uid(), type:'image', blob:await ssShrink(f), name:f.name, added:t0 + n++ });
-      else if(f.type.startsWith('video/') && f.size <= 200 * 1024 * 1024) await SSDB.put({ id:uid(), type:'video', blob:f, name:f.name, added:t0 + n++ });
+      if(isImageFile(f)) await SSDB.put({ id:uid(), type:'image', blob:await ssShrink(f), name:f.name, added:t0 + n++ });
+      else if(isVideoFile(f) && f.size <= 200 * 1024 * 1024) await SSDB.put({ id:uid(), type:'video', blob:f, name:f.name, added:t0 + n++ });
       else bad++;
     }catch(e){ bad++; }
   }
@@ -2239,7 +2265,7 @@ const sharedPhotos = () => !!B?.addPhoto && !S.mediaMissing;
 const photoCap = () => +(S.family?.photo_cap) || 300;
 async function sha256Hex(blob){ const h = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 async function frameJpeg(file){              // ~1280px on the long side, under 1 MB (the bucket's limit)
-  const bmp = await createImageBitmap(file);
+  const bmp = await decodeImage(file);
   const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
   c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
@@ -2256,14 +2282,14 @@ function photoErr(e){
   return { msg:m };
 }
 async function photosAdd(files){
-  const imgs = files.filter(f => f.type.startsWith('image/')), vids = files.filter(f => !f.type.startsWith('image/'));
+  const imgs = files.filter(isImageFile), vids = files.filter(f => !isImageFile(f));
   if(vids.length) await ssAddFiles(vids);                         // videos stay on this device
   if(!imgs.length) return;
-  let added = 0, dup = 0, bad = 0, stopped = '';
+  let added = 0, dup = 0, bad = 0, stopped = '', lastErr = '';
   const known = new Set(S.media.map(m => m.sha256)), cacheHere = ssCfg().enabled;
   for(const [i, f] of imgs.entries()){
     if(S.media.length + added >= photoCap()){ stopped = `Your family has reached ${photoCap()} shared photos. Remove some to add more.`; break; }
-    toast(`Uploading ${i + 1} of ${imgs.length}…`);
+    toast(`${isHeic(f) ? 'Converting' : 'Uploading'} ${i + 1} of ${imgs.length}…`);
     try{
       const sha = await sha256Hex(f);                               // hash of the original file: the same photo is never stored twice
       if(known.has(sha)){ dup++; continue; }
@@ -2271,10 +2297,10 @@ async function photosAdd(files){
       await B.addPhoto({ id, blob:j.blob, sha256:sha, width:j.width, height:j.height });
       known.add(sha); added++;
       if(cacheHere) await SSDB.put({ id:'sh:' + id, mid:id, type:'image', blob:j.blob, name:f.name, shared:true, added:Date.now() });
-    }catch(e){ const r = photoErr(e); if(r.dup){ dup++; continue; } if(r.stop){ stopped = r.msg; break; } bad++; console.warn('photo upload', e); }
+    }catch(e){ const r = photoErr(e); if(r.dup){ dup++; continue; } if(r.stop){ stopped = r.msg; break; } bad++; lastErr = r.msg || ''; console.warn('photo upload', e); }
   }
   await refresh().catch(()=>{}); await ssLoad();
-  const parts = [added ? `✓ Shared ${added} photo${added === 1 ? '' : 's'} with the family` : '', dup ? `${dup} already shared` : '', bad ? `${bad} couldn’t upload` : ''].filter(Boolean);
+  const parts = [added ? `✓ Shared ${added} photo${added === 1 ? '' : 's'} with the family` : '', dup ? `${dup} already shared` : '', bad ? `${bad} couldn’t upload${/HEIC/i.test(lastErr) ? ` (${lastErr})` : ''}` : ''].filter(Boolean);
   toast(stopped ? (added ? `✓ Shared ${added}. ` : '') + stopped : parts.join(' · ') || 'Nothing new to add');
   if($('#sheet').dataset.panel === 'me') openMe(); else if($('#sheet').dataset.panel === 'photos') openPhotos();
 }
@@ -2312,7 +2338,7 @@ async function openPhotos(){                 // see and remove the family's shar
   const need = rows.filter(r => !urls[r.id]);
   if(need.length){ try{ const l = await B.photoLinks(need.map(r => r.path)); need.forEach(r => { if(l[r.path]) urls[r.id] = l[r.path]; }); }catch(e){} }
   openSheet(`<h3>Shared photos</h3><p style="color:var(--muted);margin:6px 0 12px">${S.media.length} of ${photoCap()} · every frame in the family shows these.</p>
-    <input type="file" id="ssShared2" accept="image/*" multiple class="hidden">
+    <input type="file" id="ssShared2" accept="image/*,.heic,.heif" multiple class="hidden">
     <div class="btns" style="margin:0 0 12px"><button class="btn primary" data-photoadd>＋ Add photos</button></div>
     ${rows.length ? `<div class="pgrid">${rows.map(r => { const m = member(r.uploaded_by);
       return `<div class="pcell">${urls[r.id] ? `<img src="${esc(urls[r.id])}" alt="" loading="lazy">` : '<span class="pmiss">🖼️</span>'}
@@ -2345,14 +2371,14 @@ function ssSection(){
     <div class="hint" style="margin:4px 0 0">Before anyone adds, edits or reacts, they pick their name and enter their PIN. The screen switches back after a minute of no use. Tip: sign this screen in as a “Family” member so nobody’s own account stays open.</div>
     ${shared ? `<div class="sshead">📷 Shared family photos</div>
     <div class="ssmedia"><b>${S.media.length} of ${photoCap()}</b> photos · every frame in the family shows them${c.enabled ? ` · ${cachedHere} saved on this screen` : ''}</div>
-    <input type="file" id="ssShared" accept="image/*" multiple class="hidden">
+    <input type="file" id="ssShared" accept="image/*,.heic,.heif" multiple class="hidden">
     <div class="btns"><button class="btn" data-photoadd>＋ Add photos</button><button class="btn" data-photos>Manage${S.media.length ? ` (${S.media.length})` : ''}</button></div>
     <div class="sshead">📱 On this device only</div>
     <div class="ssmedia">${own.length ? `${vids} video${vids === 1 ? '' : 's'}${pics ? ` · ${pics} photo${pics === 1 ? '' : 's'}` : ''}` : 'Videos you add here play only on this screen.'}</div>
     <input type="file" id="ssFile" accept="video/*" multiple class="hidden">
     <div class="btns"><button class="btn" id="ssPick">＋ Videos</button><button class="btn" id="ssLink">＋ By link</button></div>`
     : `<div class="ssmedia">${SS.media.length ? `${pics} photo${pics === 1 ? '' : 's'} · ${vids} video${vids === 1 ? '' : 's'} on this device` : 'No photos or videos yet. Add some below.'}</div>
-    <input type="file" id="ssFile" accept="image/*,video/*" multiple class="hidden">
+    <input type="file" id="ssFile" accept="image/*,video/*,.heic,.heif" multiple class="hidden">
     <div class="btns"><button class="btn" id="ssPick">＋ Photos &amp; videos</button><button class="btn" id="ssLink">＋ By link</button></div>`}
     ${own.some(m => m.url) ? '<div class="btns"><button class="btn" id="ssPrune">Remove links that don’t load</button></div>' : ''}
     <div class="btns">${own.length ? `<button class="btn danger" id="ssClear">Remove ${shared ? 'device-only items' : 'all'}</button>` : ''}<button class="btn primary" id="ssGo">▶ Start now</button></div>
