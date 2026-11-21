@@ -593,6 +593,18 @@ main{padding:4px 16px 20px}
 .ssl .fg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .ssl img.fg{animation:ssKB var(--kb,12s) ease-out forwards}
 @keyframes ssKB{from{transform:scale(1)}to{transform:scale(1.06)}}
+/* Polaroid style */
+.sss{container-type:size}
+.ssbd{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 120% at 50% 30%,#2b2622,#0c0b0a)}
+.ssbd img{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;filter:blur(46px) brightness(.42) saturate(1.15);opacity:0;transition:opacity 1.6s ease}
+.ssbd img.in{opacity:1}
+.polw{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.pol{background:#fbfaf6;padding:max(10px,2.4cqmin) max(10px,2.4cqmin) 0;border-radius:3px;will-change:transform;
+  box-shadow:0 2px 3px rgba(0,0,0,.25),0 18px 50px rgba(0,0,0,.55);background-image:linear-gradient(170deg,#fffef9,#f1eee5)}
+.pol .pic{background:#111;line-height:0;overflow:hidden}
+.pol .pic img,.pol .pic video{display:block;max-width:64cqw;max-height:64cqh;width:auto;height:auto;object-fit:contain;filter:contrast(1.04) saturate(1.08) sepia(.06)}
+.pol .cap{height:max(44px,11cqmin);display:flex;align-items:center;justify-content:center;color:#3b3a37;
+  font:500 max(16px,3.4cqmin)/1 "Marker Felt","Bradley Hand","Segoe Print","Comic Sans MS",cursive}
 .ssempty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:10px;padding:24px;color:var(--muted);font-weight:600;
   background:radial-gradient(120% 120% at 70% 20%,#2a2420,#0c0b0a)}
 .ssempty .big{font-size:clamp(56px,8vw,110px);line-height:1}
@@ -2357,7 +2369,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('messa
    screen plays this device's photos and videos. Any touch brings the normal app back.
    Settings + media live on THIS device only (localStorage + IndexedDB), so nothing touches Supabase storage. */
 const SS = { on:false, cfg:null, media:[], order:[], idx:-1, idleT:null, tickT:null, advT:null, wake:null, since:0, swallow:0, fails:0, fs:false };
-const SS_DEF = { enabled:false, idle:2, secs:10, sound:false, night:true, shared:false, homeId:null, homePin:'', display:false };
+const SS_DEF = { enabled:false, idle:2, secs:10, sound:false, night:true, shared:false, homeId:null, homePin:'', display:false, style:'classic' };
 function ssCfg(){
   if(!SS.cfg){ let c = {}; try{ c = JSON.parse(localStorage.getItem('famcal-ss') || '{}'); }catch(e){}
     if(c.display === undefined) c.display = !!(c.enabled || c.shared);     // screens set up before the "shared display" switch existed
@@ -2576,6 +2588,7 @@ function ssSection(){
       ${chk('enabled', 'Screensaver')}
       ${c.enabled ? `<div class="hint" style="margin:4px 0 0">When the screen sits idle, today’s plan slides to the left and photos play on the right.</div>
       <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
+      <label class="ssrow"><span>Photo style</span><select data-ss-set="style">${SS_STYLES.map(([k, n]) => `<option value="${k}" ${c.style === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       <label class="ssrow"><span>Each photo shows for</span>${sel('secs', [5,8,10,15,20,30], 'sec')}</label>
       ${chk('sound', 'Play sound on videos')}
       ${chk('night', 'Dim at night (10pm–6am)')}` : ''}
@@ -2601,7 +2614,7 @@ document.addEventListener('change', e => {
   else if(t.dataset && t.dataset.ssToggle === 'display') ssDisplay(t.checked);
   else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); reopenSettings(); }
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
-  else if(t.dataset && t.dataset.ssSet) ssSave({ [t.dataset.ssSet]: +t.value });
+  else if(t.dataset && t.dataset.ssSet) ssSave({ [t.dataset.ssSet]: t.dataset.ssSet === 'style' ? t.value : +t.value });
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
   else if((t.id === 'ssShared' || t.id === 'ssShared2') && t.files.length){ const fs = [...t.files]; t.value = ''; photosAdd(fs); }
 });
@@ -2680,24 +2693,30 @@ function ssNext(){
     return;
   }
   if(SS.fails > SS.media.length){                   // nothing would load: say why instead of showing a black screen
-    stage.innerHTML = `<div class="ssempty"><span class="big">⚠️</span><b>Couldn’t load your photos</b><span>The saved links open web pages, not pictures.<br>Open your avatar → Screensaver and tap “Remove links that don’t load”,<br>then add photos with “＋ Photos &amp; videos”.</span></div>`;
+    stage.innerHTML = `<div class="ssempty"><span class="big">⚠️</span><b>Couldn’t load your photos</b><span>The saved links open web pages, not pictures.<br>Open ⚙️ Settings → Shared display and tap “Remove links that don’t load”,<br>then add photos there.</span></div>`;
     return;
   }
   if(++SS.idx >= SS.order.length){ ssShuffle(); SS.idx = 0; }
   const m = SS.media[SS.order[SS.idx]]; if(!m){ ssShuffle(); SS.advT = setTimeout(ssNext, 50); return; }
   const cfg = ssCfg(), url = m.url ? ssUrl(m.url) : URL.createObjectURL(m.blob);
-  const layer = document.createElement('div'); layer.className = 'ssl'; layer.dataset.blob = m.url ? '' : url;
+  const pola = cfg.style === 'polaroid';
+  stage.classList.toggle('pola', pola);
+  const layer = document.createElement('div'); layer.className = pola ? 'polw' : 'ssl'; layer.dataset.blob = m.url ? '' : url;
+  const frame = pola ? polaroidFrame(m) : layer;                         // where the picture goes
   let done = false;
   const skip = () => { if(done) return; done = true; SS.fails++; if(!m.url) URL.revokeObjectURL(url); SS.advT = setTimeout(ssNext, 50); };
   const show = fn => {
     if(done || !SS.on) return; done = true; SS.fails = 0;
-    const old = [...stage.children]; stage.appendChild(layer); void layer.offsetWidth; layer.classList.add('in');
-    setTimeout(() => old.forEach(o => { if(o.dataset.blob) URL.revokeObjectURL(o.dataset.blob); o.remove(); }), 1600);
+    if(pola){ layer.appendChild(frame); polaroidIn(stage, layer, m, url); }
+    else{
+      const old = [...stage.children]; stage.appendChild(layer); void layer.offsetWidth; layer.classList.add('in');
+      setTimeout(() => old.forEach(o => { if(o.dataset.blob) URL.revokeObjectURL(o.dataset.blob); o.remove(); }), 1600);
+    }
     fn && fn();
   };
   if(m.type === 'video'){
     const v = document.createElement('video'); v.className = 'fg'; v.muted = !cfg.sound; v.playsInline = true; v.preload = 'auto'; v.src = url;
-    layer.appendChild(v);
+    (pola ? frame.querySelector('.pic') : layer).appendChild(v);
     v.addEventListener('error', skip);
     v.addEventListener('canplay', () => show(() => {
       const go = () => { clearTimeout(SS.advT); SS.advT = setTimeout(ssNext, 800); };
@@ -2708,12 +2727,53 @@ function ssNext(){
   } else {
     const bg = new Image(), fg = new Image(); bg.className = 'bg'; fg.className = 'fg'; bg.alt = fg.alt = '';
     fg.style.setProperty('--kb', (cfg.secs + 2) + 's');
-    layer.append(bg, fg);
+    if(pola) frame.querySelector('.pic').appendChild(fg); else layer.append(bg, fg);
     fg.onload = () => show(() => { SS.advT = setTimeout(ssNext, cfg.secs * 1000); });
     fg.onerror = skip;
     bg.referrerPolicy = fg.referrerPolicy = 'no-referrer';
     bg.src = fg.src = url;
   }
+}
+
+/* ---------- Photo styles ----------
+   classic:  full-screen crossfade with a slow zoom.
+   polaroid: each photo is a white-framed print tossed in from the side — small and tilted — that grows and
+             straightens as it lands in the middle, on top of the pile of earlier prints. */
+const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid']];
+const POLA_KEEP = 4;                                    // prints left in the pile under the new one
+function polaroidFrame(m){
+  const card = document.createElement('div'); card.className = 'pol';
+  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
+  card.innerHTML = `<div class="pic"></div><div class="cap">${who ? `from ${esc(firstName(who.name))} ♥` : ''}</div>`;
+  return card;
+}
+function polaroidIn(stage, layer, m, url){
+  // soft blurred copy of the photo fills the space behind the pile
+  let bd = stage.querySelector('.ssbd'); if(!bd){ bd = document.createElement('div'); bd.className = 'ssbd'; stage.prepend(bd); }
+  if(m.type !== 'video'){ const b = new Image(); b.referrerPolicy = 'no-referrer'; b.alt = ''; b.src = url; bd.appendChild(b);
+    requestAnimationFrame(() => b.classList.add('in')); setTimeout(() => [...bd.children].slice(0, -1).forEach(x => x.remove()), 1800); }
+  [...stage.children].filter(x => !x.classList.contains('polw')).forEach(x => x !== bd && x.remove());   // leftovers from the classic style
+  const card = layer.firstElementChild, pile = [...stage.querySelectorAll('.polw:not(.out)')];
+  stage.appendChild(layer);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const W = stage.clientWidth, H = stage.clientHeight, side = Math.random() < .5 ? -1 : 1;
+  const tilt = side * (14 + Math.random() * 16) * (Math.random() < .8 ? 1 : -1), dy = (Math.random() - .5) * H * .35;
+  if(reduce) card.animate([{ opacity:0 }, { opacity:1 }], { duration:900, easing:'ease', fill:'both' });
+  else card.animate([                                   // slides first; grows and straightens as it reaches the middle
+    { transform:`translate(${side * W * .62}px, ${dy}px) rotate(${tilt}deg) scale(.4)`, opacity:0, easing:'cubic-bezier(.3,.55,.4,1)' },
+    { opacity:1, offset:.1, easing:'cubic-bezier(.3,.55,.4,1)' },
+    { transform:`translate(${side * W * .08}px, ${dy * .2}px) rotate(${tilt * .7}deg) scale(.55)`, offset:.5, easing:'cubic-bezier(.45,0,.3,1)' },
+    { transform:`translate(${-side * W * .012}px, 0) rotate(${-tilt * .05}deg) scale(1.025)`, offset:.86, easing:'ease-out' },
+    { transform:'translate(0,0) rotate(0deg) scale(1)', opacity:1 }
+  ], { duration:2600, fill:'both' });
+  // the earlier prints get knocked a little askew and settle under the new one
+  pile.forEach((p, i) => {
+    const c = p.firstElementChild, depth = pile.length - i;
+    if(depth === 1 && !reduce){ const r = (Math.random() < .5 ? -1 : 1) * (2.5 + Math.random() * 4.5), dx = (Math.random() - .5) * 40, dy = (Math.random() - .5) * 24;
+      c.animate([{}, { transform:`translate(${dx}px, ${dy}px) rotate(${r}deg) scale(.96)`, filter:'brightness(.8)' }], { duration:1400, delay:1300, easing:'ease-out', fill:'forwards' }); }
+    if(depth >= POLA_KEEP){ p.classList.add('out');
+      p.animate([{ opacity:1 }, { opacity:0 }], { duration:900, delay:1600, fill:'forwards' }).onfinish = () => { if(p.dataset.blob) URL.revokeObjectURL(p.dataset.blob); p.remove(); }; }
+  });
 }
 
 /* ---------- Start / stop / idle ---------- */
