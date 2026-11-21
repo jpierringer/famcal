@@ -624,6 +624,44 @@ main{padding:4px 16px 20px}
 .sbi .sbst{position:absolute;font-size:1em;line-height:1;transform:scale(2.2);font-style:normal;
   filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 3px 4px rgba(0,0,0,.3))}
 .sbi.stuck .sbst{transform:none;transition-delay:.35s}
+/* Postcard style */
+.pc{position:absolute;left:50%;top:50%;perspective:2400px;will-change:transform}
+.pcin{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1.25s cubic-bezier(.45,.05,.25,1)}
+.pc.flipped .pcin{transform:rotateY(180deg)}
+.pc .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:.35em;
+  box-shadow:0 .15em .3em rgba(0,0,0,.25),0 1.2em 3em rgba(0,0,0,.5)}
+.pc .front{background:#fbf8f1;padding:.8em}
+.pc .front .pic{width:100%;height:100%;overflow:hidden;background:#111;border-radius:.15em;line-height:0}
+.pc .front .pic img,.pc .front .pic video{width:100%;height:100%;object-fit:cover;filter:saturate(1.08) contrast(1.04)}
+.pc .back{transform:rotateY(180deg);display:grid;grid-template-columns:1.15fr auto 1fr;grid-template-rows:auto 1fr;gap:0 1.4em;padding:1.4em 1.8em 1.6em;color:#3d3a35;
+  background:radial-gradient(circle at 80% 10%,rgba(255,255,255,.6),transparent 50%),repeating-linear-gradient(0deg,rgba(120,100,70,.025) 0 2px,transparent 2px 5px),linear-gradient(160deg,#fbf6ea,#efe5cf)}
+.pchead{grid-column:1/-1;text-align:center;font:800 1.05em/1 Nunito,sans-serif;letter-spacing:.6em;color:#7a6f60;margin-bottom:.9em}
+.pcmsg{align-self:center;font:700 2.15em/1.25 Caveat,"Marker Felt","Bradley Hand",cursive;transform:rotate(-1.5deg)}
+.pcsig{margin-top:.5em;font-size:.82em;opacity:.9}
+.pcdiv{width:2px;background:rgba(90,80,60,.35);margin:.4em 0}
+.pcright{display:grid;grid-template-rows:auto 1fr;position:relative}
+.pcstamp{--r:.22em;justify-self:end;width:5.8em;height:6.8em;padding:calc(var(--r) * 2);background:#fffdf8;transform:rotate(2deg);
+  -webkit-mask:radial-gradient(var(--r),#0000 97%,#000) round calc(-1.5 * var(--r)) calc(-1.5 * var(--r)) / calc(3 * var(--r)) calc(3 * var(--r)),linear-gradient(#000 0 0) content-box;
+  mask:radial-gradient(var(--r),#0000 97%,#000) round calc(-1.5 * var(--r)) calc(-1.5 * var(--r)) / calc(3 * var(--r)) calc(3 * var(--r)),linear-gradient(#000 0 0) content-box;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.2))}
+.pci{width:100%;height:100%;background:var(--s);display:grid;grid-template-rows:1fr auto;place-items:center;padding:.3em .2em .35em;box-shadow:inset 0 0 0 .12em rgba(0,0,0,.08)}
+.pcstamp span{font-size:2.7em;line-height:1}
+.pcstamp small{font:800 .52em/1 Nunito,sans-serif;letter-spacing:.12em;color:#6b5f50}
+.pcmark{position:absolute;right:2.6em;top:2.4em;width:10em;transform:rotate(-14deg);opacity:.62;overflow:visible}
+.pcmark circle,.pcmark .wave{fill:none;stroke:#2b2d42;stroke-width:2.6}
+.pcmark text{fill:#2b2d42;font:800 12px Nunito,sans-serif;letter-spacing:.06em}
+.pcmark .ring{font-size:10.5px;letter-spacing:.14em}
+.pcmark .mid{text-anchor:middle;font-size:15px}.pcmark .mid.sm{font-size:11px}
+.pcaddr{align-self:end;display:grid;gap:.15em;font:700 1.7em/1.35 Caveat,"Marker Felt",cursive}
+.pcaddr span{border-bottom:2px solid rgba(90,80,60,.3);padding-left:.3em;min-height:1.3em}
+.pc.tall .back{grid-template-columns:1fr;grid-template-rows:auto auto 2px 1fr;gap:.9em 0;padding:1.4em 1.4em 1.6em}
+.pc.tall .pcdiv{width:auto;height:2px;margin:0}
+.pc.tall .pcmsg{font-size:1.95em}
+.pc.tall .pcright{grid-template-columns:1fr auto;grid-template-rows:1fr}
+.pc.tall .pcstamp{grid-column:2;grid-row:1;align-self:start}
+.pc.tall .pcaddr{grid-column:1;grid-row:1;font-size:1.45em}
+.pc.tall .pcmark{right:3.5em;top:-.6em;width:8.5em}
+@media (prefers-reduced-motion: reduce){ .pcin{transition:opacity .6s} .pc.flipped .pcin{transform:none} .pc.flipped .front{opacity:0} .pc .back{transform:none;opacity:0} .pc.flipped .back{opacity:1} }
 /* Polaroid style */
 .sss{container-type:size}
 .ssbd{position:absolute;inset:0;overflow:hidden;background:radial-gradient(120% 120% at 50% 30%,#2b2622,#0c0b0a)}
@@ -2730,9 +2768,9 @@ function ssNext(){
   if(++SS.idx >= SS.order.length){ ssShuffle(); SS.idx = 0; }
   const m = SS.media[SS.order[SS.idx]]; if(!m){ ssShuffle(); SS.advT = setTimeout(ssNext, 50); return; }
   const cfg = ssCfg(), url = m.url ? ssUrl(m.url) : URL.createObjectURL(m.blob);
-  const pola = cfg.style === 'polaroid', scrap = cfg.style === 'scrapbook';
+  const pola = cfg.style === 'polaroid', scrap = cfg.style === 'scrapbook', post = cfg.style === 'postcard';
   stage.classList.toggle('pola', pola);
-  const layer = scrap ? scrapItem(m) : document.createElement('div'); if(!scrap) layer.className = pola ? 'polw' : 'ssl'; layer.dataset.blob = m.url ? '' : url;
+  const layer = scrap ? scrapItem(m) : post ? postcardItem(m) : document.createElement('div'); if(!scrap && !post) layer.className = pola ? 'polw' : 'ssl'; layer.dataset.blob = m.url ? '' : url;
   const frame = pola ? polaroidFrame(m) : layer;                         // where the picture goes
   let done = false;
   const skip = () => { if(done) return; done = true; SS.fails++; if(!m.url) URL.revokeObjectURL(url); SS.advT = setTimeout(ssNext, 50); };
@@ -2740,6 +2778,7 @@ function ssNext(){
     if(done || !SS.on) return; done = true; SS.fails = 0;
     if(pola){ layer.appendChild(frame); polaroidIn(stage, layer, m, url); }
     else if(scrap) scrapIn(stage, layer, m);
+    else if(post) postcardIn(stage, layer, m, url);
     else{
       const old = [...stage.children]; stage.appendChild(layer); void layer.offsetWidth; layer.classList.add('in');
       setTimeout(() => old.forEach(ssDrop), 1600);
@@ -2748,20 +2787,22 @@ function ssNext(){
   };
   if(m.type === 'video'){
     const v = document.createElement('video'); v.className = 'fg'; v.muted = !cfg.sound; v.playsInline = true; v.preload = 'auto'; v.src = url;
-    (pola || scrap ? frame.querySelector('.pic') : layer).appendChild(v);
+    (pola || scrap || post ? frame.querySelector('.pic') : layer).appendChild(v);
     v.addEventListener('error', skip);
     v.addEventListener('canplay', () => show(() => {
       const go = () => { clearTimeout(SS.advT); SS.advT = setTimeout(ssNext, 800); };
-      v.addEventListener('ended', () => { if(scrap) scrapSettle(layer); go(); }, { once:true });
+      v.addEventListener('ended', () => { if(scrap) scrapSettle(layer);
+        if(post){ postcardFlip(layer); clearTimeout(SS.advT); SS.advT = setTimeout(ssNext, 4200); } else go(); }, { once:true });
       SS.advT = setTimeout(ssNext, Math.min(((v.duration || 60) + 4) * 1000, 190000));   // safety net if "ended" never fires
       v.play().catch(() => { v.muted = true; v.play().catch(skip); });
     }), { once:true });
   } else {
     const bg = new Image(), fg = new Image(); bg.className = 'bg'; fg.className = 'fg'; bg.alt = fg.alt = '';
     fg.style.setProperty('--kb', (cfg.secs + 2) + 's');
-    if(pola || scrap) frame.querySelector('.pic').appendChild(fg); else layer.append(bg, fg);
+    if(pola || scrap || post) frame.querySelector('.pic').appendChild(fg); else layer.append(bg, fg);
     fg.onload = () => show(() => { SS.advT = setTimeout(ssNext, cfg.secs * 1000);
-      if(scrap){ clearTimeout(SB.settleT); SB.settleT = setTimeout(() => scrapSettle(layer), Math.max(2600, cfg.secs * 1000 * .55)); } });
+      if(scrap){ clearTimeout(SB.settleT); SB.settleT = setTimeout(() => scrapSettle(layer), Math.max(2600, cfg.secs * 1000 * .55)); }
+      if(post){ clearTimeout(PC.flipT); PC.flipT = setTimeout(() => postcardFlip(layer), Math.max(2600, cfg.secs * 1000 * .55)); } });
     fg.onerror = skip;
     bg.referrerPolicy = fg.referrerPolicy = 'no-referrer';
     bg.src = fg.src = url;
@@ -2773,7 +2814,7 @@ function ssDrop(el){ [el, ...el.querySelectorAll('[data-blob]')].forEach(x => x.
    classic:  full-screen crossfade with a slow zoom.
    polaroid: each photo is a white-framed print tossed in from the side — small and tilted — that grows and
              straightens as it lands in the middle, on top of the pile of earlier prints. */
-const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid'], ['scrapbook', '✂️ Scrapbook']];
+const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid'], ['scrapbook', '✂️ Scrapbook'], ['postcard', '💌 Postcard']];
 const POLA_KEEP = 4;                                    // prints left in the pile under the new one
 function polaroidFrame(m){
   const card = document.createElement('div'); card.className = 'pol';
@@ -2900,6 +2941,84 @@ function scrapSettle(el){                              // fly from the middle in
   setTimeout(() => el.classList.add('stuck'), reduce ? 0 : 1050);            // tape, doodles and stickers go on once it lands
 }
 
+/* postcard: each photo is dealt onto the table as a postcard, shown photo-side up, then flipped over. The back has
+   a handwritten note taken from the calendar, a stamp and today's postmark. The next card sweeps the old one away. */
+const PC = { cur:null, flipT:0, last:'' };
+const PC_STAMPS = ['🏡', '🌻', '❤️', '🌈', '⭐', '🦋', '🌲', '☀️', '🎈', '🐝'];
+const PC_INKS = ['#c0392b', '#1d4e89', '#2d6a4f', '#7b2cbf', '#b5651d'];
+const PC_GENERIC = ['Wish you were here! 😊', 'Having a wonderful time at home.', 'Hugs from all of us ♥', 'Thinking of you!', 'Best. Family. Ever.', 'Remember this one? 📸', 'Home is our favorite place.', 'Love you all to the moon 🌙'];
+function postcardNotes(){                              // little notes from what's on the calendar (never private things)
+  const t = todayStr(), ok = e => !isSecret(e) && e.kind !== 'list', when = e => e.start_time ? ' at ' + fmtTime(e.start_time) : '';
+  const notes = [];
+  countdowns().filter(e => !isSecret(e)).slice(0, 3).forEach(e => { const v = view(e), n = daysUntil(e.starts_on);
+    notes.push({ text: n === 0 ? `Today’s the day — ${v.title}! 🎉` : n === 1 ? `${v.title} is tomorrow!` : `Only ${n} more days until ${v.title}!`, stamp: stickerOf(v) }); });
+  S.events.filter(e => e.starts_on === t && ok(e)).sort(sortEv).slice(0, 3).forEach(e => { const v = view(e);
+    notes.push({ text: `Don’t forget: ${v.title}${when(e)} today.`, stamp: stickerOf(v) }); });
+  S.events.filter(e => e.starts_on === addDays(t, 1) && ok(e)).sort(sortEv).slice(0, 2).forEach(e => { const v = view(e);
+    notes.push({ text: `Tomorrow: ${v.title}${when(e)}.`, stamp: stickerOf(v) }); });
+  const f = featuredList();
+  if(f){ const left = itemsOf(f.id).filter(i => !i.done), v = view(f);
+    if(left.length) notes.push({ text: `Please pick up: ${left.slice(0, 3).map(i => i.text).join(', ')}${left.length > 3 ? ` + ${left.length - 3} more` : ''}.`, stamp: v.sticker || '🛒' }); }
+  return notes;
+}
+function postcardItem(m){
+  const el = document.createElement('div'); el.className = 'pc';
+  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
+  const fam = S.family?.name || 'Our family';
+  const notes = postcardNotes().filter(n => n.text !== PC.last);
+  const note = notes.length && Math.random() < .75 ? pickOne(notes) : { text: pickOne(PC_GENERIC), stamp: pickOne(PC_STAMPS) };
+  PC.last = note.text;
+  const ink = pickOne(PC_INKS), now = new Date();
+  const mon = now.toLocaleDateString('en-US', { month:'short' }).toUpperCase(), day = now.getDate(), yr = now.getFullYear();
+  const ring = `${fam.toUpperCase()} ★ HOME ★ `;
+  el.innerHTML = `<div class="pcin">
+    <div class="face front"><div class="pic"></div></div>
+    <div class="face back">
+      <div class="pchead">POST CARD</div>
+      <div class="pcmsg" style="color:${ink}">${esc(note.text)}<div class="pcsig">— Love, ${esc(who ? firstName(who.name) : fam)}</div></div>
+      <div class="pcdiv"></div>
+      <div class="pcright">
+        <div class="pcstamp"><div class="pci" style="--s:${pickOne(['#f6d5c3', '#d7e8f5', '#e3f0d8', '#f7e7b4', '#ead9f2'])}"><span>${esc(note.stamp || pickOne(PC_STAMPS))}</span><small>FAMILY POST</small></div></div>
+        <svg class="pcmark" viewBox="0 0 220 120"><defs><path id="pcr${el.dataset.n = Math.random().toString(36).slice(2, 7)}" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0"/></defs>
+          <circle cx="60" cy="60" r="52"/><circle cx="60" cy="60" r="31"/>
+          <text class="ring"><textPath href="#pcr${el.dataset.n}">${esc(ring.repeat(2).slice(0, 34))}</textPath></text>
+          <text x="60" y="56" class="mid">${mon} ${day}</text><text x="60" y="74" class="mid sm">${yr}</text>
+          <path class="wave" d="M118 34 q12 -8 24 0 t24 0 t24 0 t24 0 M118 52 q12 -8 24 0 t24 0 t24 0 t24 0 M118 70 q12 -8 24 0 t24 0 t24 0 t24 0 M118 88 q12 -8 24 0 t24 0 t24 0 t24 0"/></svg>
+        <div class="pcaddr" style="color:${ink}"><span>Everyone at home</span><span>${esc(fam)}</span><span>♥</span></div>
+      </div>
+    </div></div>`;
+  return el;
+}
+function postcardIn(stage, el, m, url){
+  let bd = stage.querySelector('.ssbd');
+  if(!bd || !stage.querySelector('.pc')){ [...stage.children].forEach(ssDrop); bd = document.createElement('div'); bd.className = 'ssbd'; stage.appendChild(bd); }
+  if(m.type !== 'video'){ const b = new Image(); b.referrerPolicy = 'no-referrer'; b.alt = ''; b.src = url; bd.appendChild(b);
+    requestAnimationFrame(() => b.classList.add('in')); setTimeout(() => [...bd.children].slice(0, -1).forEach(x => x.remove()), 1800); }
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const media = el.querySelector('img,video'), nw = media.naturalWidth || media.videoWidth || 3, nh = media.naturalHeight || media.videoHeight || 2;
+  const a = Math.min(1.5, Math.max(.75, nw / nh)), k = Math.min(W * .7 / a, H * .72);       // postcards stay between 3:4 and 3:2
+  const cw = Math.round(k * a), chh = Math.round(k);
+  el.style.width = cw + 'px'; el.style.height = chh + 'px'; el.style.fontSize = Math.max(cw, chh) / 30 + 'px';
+  el.classList.toggle('tall', a < 1);
+  const old = PC.cur && PC.cur.isConnected ? PC.cur : null;
+  stage.appendChild(el); PC.cur = el;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, rest = rnd(-2.5, 2.5).toFixed(1);
+  el.style.transform = `translate(-50%,-50%) rotate(${rest}deg)`;
+  el.animate(reduce ? [{ opacity:0 }, { opacity:1 }] : [
+    { transform:`translate(-50%,-50%) translate(${W * .7}px, ${H * .25}px) rotate(${rnd(14, 24).toFixed(1)}deg) scale(.85)` },
+    { transform:`translate(-50%,-50%) translate(-${W * .012}px, 0) rotate(${(-rest * .5).toFixed(1)}deg) scale(1.01)`, offset:.8 },
+    { transform:`translate(-50%,-50%) rotate(${rest}deg)` }], { duration:1500, easing:'cubic-bezier(.25,.8,.3,1)' });
+  if(old){ clearTimeout(PC.flipT); old.style.zIndex = 0;
+    old.animate(reduce ? [{ opacity:1 }, { opacity:0 }] : [{ transform:old.style.transform, opacity:1 },
+      { transform:`translate(-50%,-50%) translate(-${W * .75}px, ${-H * .12}px) rotate(-${rnd(12, 22).toFixed(0)}deg) scale(.85)`, opacity:.2 }],
+      { duration:1300, delay:120, easing:'cubic-bezier(.5,0,.75,.4)', fill:'forwards' }).onfinish = () => ssDrop(old); }
+}
+function postcardFlip(el){                             // turn it over to read the back
+  if(!el || !el.isConnected || el.classList.contains('flipped')) return;
+  el.classList.add('flipped');
+  const v = el.querySelector('video'); if(v) v.pause();
+}
+
 /* ---------- Start / stop / idle ---------- */
 async function ssWake(){ try{ if('wakeLock' in navigator && !SS.wake) SS.wake = await navigator.wakeLock.request('screen'); }catch(e){} }
 function ssStart(manual){
@@ -2920,7 +3039,7 @@ function ssStart(manual){
 function ssStop(byUser){
   if(!SS.on) return;
   SS.on = false; if(byUser) SS.swallow = Date.now() + 500;
-  clearInterval(SS.tickT); clearTimeout(SS.advT); clearTimeout(SB.settleT); SB.page = null;
+  clearInterval(SS.tickT); clearTimeout(SS.advT); clearTimeout(SB.settleT); clearTimeout(PC.flipT); SB.page = null; PC.cur = null;
   const el = $('#ss'); el.classList.remove('on', 'go'); el.setAttribute('aria-hidden', 'true');
   setTimeout(() => { if(!SS.on){ el.querySelectorAll('[data-blob]').forEach(l => l.dataset.blob && URL.revokeObjectURL(l.dataset.blob)); el.innerHTML = ''; } }, 600);
   if(SS.wake){ SS.wake.release && SS.wake.release().catch(() => {}); SS.wake = null; }
