@@ -620,6 +620,14 @@ main{padding:4px 16px 20px}
 .ssr .who .av:first-child{margin-left:0}
 .ssnone{padding:14px 4px;color:var(--muted);font-weight:600}
 .sslists{display:flex;flex-wrap:wrap;gap:6px}
+.ssfeat{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:16px;background:color-mix(in srgb,#f5b301 14%,var(--card));border:2px solid color-mix(in srgb,#f5b301 55%,transparent)}
+.ssfeat span{padding:5px 11px;border-radius:999px;background:var(--card);font-size:15px;font-weight:700}
+.ssfeat small{align-self:center;color:var(--muted);font-weight:700;padding:0 4px}
+.card.feat{box-shadow:0 0 0 2px #f5b301,var(--shadow)}
+.feattag{display:inline-block;margin:-2px 0 6px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#f5b301 22%,var(--soft));font-size:12px;font-weight:800;letter-spacing:.02em}
+.sfeat{margin:14px 0 4px}
+.sfeat .card{margin:0}
+.togsub{display:block;font-size:12px;color:var(--muted);font-weight:600}
 .sslists span{padding:5px 11px;border-radius:999px;background:var(--card);font-size:14px;font-weight:700}
 .sslists small{color:var(--muted);font-weight:700}
 
@@ -964,6 +972,19 @@ const admins = () => S.members.filter(isAdmin);
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
 const isSecret = ev => ev.kind === 'private' || !!ev.is_private;
 const hidden = ev => isSecret(ev) && ev.owner_id !== S.me?.id && !(ev.invitees || []).includes(S.me?.id);
+// One family-wide featured list (stored on the family, so featuring another replaces it). Private lists never qualify.
+function featuredList(){ const id = S.family?.featured_list; const e = id && S.events.find(x => x.id === id);
+  return e && e.kind === 'list' && !isSecret(e) ? e : null; }
+const isFeatured = v => !!v && S.family?.featured_list === v.id && !isSecret(v);
+function featuredCard(max){ const e = featuredList(); if(!e) return ''; const keep = cardMax; cardMax = max; const h = card(e); cardMax = keep; return h; }
+async function setFeatured(id, on){
+  const prev = featuredList();
+  try{ await B.updateFamily({ featured_list: on ? id : null }); await refresh(); }
+  catch(e){ return toast('⚠️ ' + (/featured_list|column/.test(e.message) ? 'Run the latest schema.sql in Supabase to feature lists' : e.message)); }
+  const v = view(S.events.find(x => x.id === id) || {});
+  toast(on ? `⭐ ${v.title || 'List'} is featured${prev && prev.id !== id ? ` (instead of ${view(prev).title})` : ''}` : 'No longer featured');
+  if(S.openId === id) openDetail(id, true);
+}
 const asksRsvp = ev => ev.kind === 'invite' || (ev.kind === 'private' && (ev.invitees || []).length > 0);
 function busyNames(ev){
   const ids = [ev.owner_id, ...(ev.invitees || [])].filter((x,i,a) => a.indexOf(x) === i);
@@ -1039,7 +1060,7 @@ function LocalBackend(){
     async setRsvp(eid, status){ db.rsvps = db.rsvps.filter(r => !(r.event_id===eid && r.member_id===db.meId)); if(status) db.rsvps.push({event_id:eid, member_id:db.meId, family_id:db.family.id, status}); save(); },
     async setReaction(eid, st, on){ db.reactions = db.reactions.filter(r => !(r.event_id===eid && r.member_id===db.meId && r.sticker===st)); if(on) db.reactions.push({event_id:eid, member_id:db.meId, family_id:db.family.id, sticker:st}); save(); },
     async updateMe(p){ Object.assign(db.members.find(m => m.id===db.meId), p); save(); },
-    async updateFamily(p){ Object.assign(db.family, p); save(); },
+    async updateFamily(p){ Object.assign(db.family, p); save(); },   // featured_list lives on the family too
     // demo has no PINs: any 4–6 digits unlock admin; the same safety rules as the database apply
     async adminVerify(a){ demoAdmin(a); },
     async addMember(m, a){ demoAdmin(a); db.members.push({id:uid(), name:m.name, emoji:m.emoji, color:m.color}); save(); },
@@ -1241,12 +1262,13 @@ function renderSide(){
     <button class="snav ${S.tab==='lists'?'on':''}" data-tab="lists"><span>☑️</span>Lists<small>${lists.length || ''}</small></button>
     <div class="shd">${esc(sel.toLocaleDateString(undefined,{month:'long', year:'numeric'}))}<span class="spacer"></span><button data-mnav="-1" aria-label="Previous month">‹</button><button data-mnav="1" aria-label="Next month">›</button></div>
     <div class="mini">${mini}</div>
+    ${S.tab === 'cal' && featuredList() ? `<div class="sfeat">${featuredCard(10)}</div>` : ''}
     ${(() => { const cds = countdowns(); return cds.length ? `<div class="shd">Countdowns</div>${cds.slice(0,6).map(e => { const n = daysUntil(e.starts_on);
       return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'⏳')}</span><span class="grow">${esc(e.title)}</span><b class="sbcd" style="--c:${esc((member(e.owner_id)||{}).color||'#ff6b4a')}">${n === 0 ? '🎉' : n + 'd'}</b></button>`; }).join('')}` : ''; })()}
     ${S.members.length > 1 ? `<div class="shd">People${S.filter.size ? '<span class="spacer"></span><button data-clearfilter style="width:auto;padding:0 6px;font-size:12px;color:var(--accent)">Show all</button>' : ''}</div>
       ${S.members.map(m => `<button class="sbrow ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m,'sm')}<span class="grow">${esc(m.name)}${m.id===S.me.id?' <small>(you)</small>':''}</span></button>`).join('')}` : ''}
     ${lists.length ? `<div class="shd">Lists</div>${lists.slice(0,8).map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
-      return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'☑️')}</span><span class="grow">${esc(e.title)}</span><small>${left ? left+' left' : '✓'}</small></button>`; }).join('')}` : ''}
+      return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'☑️')}</span><span class="grow">${esc(e.title)}${isFeatured(e) ? ' ⭐' : ''}</span><small>${left ? left+' left' : '✓'}</small></button>`; }).join('')}` : ''}
     <div class="sfoot"><kbd>N</kbd> new · <kbd>D</kbd><kbd>W</kbd><kbd>M</kbd> day/week/month · <kbd>←</kbd><kbd>→</kbd> move · <kbd>T</kbd> today · <kbd>S</kbd> screensaver</div>`;
 }
 
@@ -1281,8 +1303,9 @@ function renderMain(){
   if(S.tab === 'cal'){
     h += pushNudge();
     if(S.sel === todayStr()) h += countdownStrip();
+    h += featuredCard(8);
     if(S.sel === todayStr()){
-      const pins = S.events.filter(e => e.kind==='list' && !e.starts_on && passesFilter(e)).map(view);
+      const pins = S.events.filter(e => e.kind==='list' && !e.starts_on && passesFilter(e) && !isFeatured(e)).map(view);
       if(pins.length) h += `<div class="pinned">${pins.map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
         return `<button class="pin" data-open="${e.id}">${esc(e.sticker||'☑️')} ${esc(e.title)} <small>${left ? left+' left' : 'done ✓'}</small></button>`; }).join('')}</div>`;
     }
@@ -1426,7 +1449,7 @@ function card(ev){
     return `<div class="card busy" style="--c:${esc(o.color)}"><div class="when">${esc(whenText(v, withDay))}</div>
       <div class="ttl">🔒 ${esc(busyNames(v).text)}</div><div class="meta"><span class="people">${busyNames(v).ids.map(id => avatar(member(id),'sm')).join('')}</span><span>Private</span></div></div>`;
   }
-  let h = `<div class="card" style="--c:${esc(o.color)}" data-open="${v.id}">`;
+  let h = `<div class="card${isFeatured(v) ? ' feat' : ''}" style="--c:${esc(o.color)}" data-open="${v.id}">${isFeatured(v) ? '<div class="feattag">⭐ Featured list</div>' : ''}`;
   { const st = v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`); if(st) h += `<button class="sticker" data-react="${esc(st)}" data-id="${v.id}" title="React with ${esc(st)}" aria-label="React with ${esc(st)}">${esc(st)}</button>`; }
   h += `<div class="when">${esc(whenText(v, withDay))}${isSecret(v) ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
   const meta = [];
@@ -1511,6 +1534,9 @@ function openDetail(id, quiet){
   if(v.starts_on) h += `<button class="btn" data-ics="${id}">📲 Phone cal</button>`;
   if(mine) h += `<button class="btn" data-edit="${id}">✏️ Edit</button><button class="btn danger" data-del="${id}">Delete</button>`;
   h += `</div>`;
+  if(v.kind === 'list') h += isSecret(v)
+    ? `<div class="hint" style="margin:10px 2px 0">🔒 Private lists can’t be featured.</div>`
+    : `<button class="tog ${isFeatured(v) ? 'on' : ''}" data-feature="${id}" style="margin-top:8px"><span>⭐</span><div style="flex:1">Feature on the calendar${featuredList() && !isFeatured(v) ? `<small class="togsub">Replaces “${esc(view(featuredList()).title)}”</small>` : `<small class="togsub">Shows on everyone’s calendar and the wall display</small>`}</div><i class="sw"></i></button>`;
   if(mine && v.starts_on && daysUntil(v.starts_on) >= 0) h += `<button class="tog ${v.countdown ? 'on' : ''}" data-cdtoggle="${id}" style="margin-top:8px"><span>⏳</span>Show a countdown<i class="sw"></i></button>`;
   if(quiet && $('#sheet').classList.contains('on')){ const sc = $('#sheet').scrollTop; $('#sheet').innerHTML = `<div class="grab"></div>` + h; $('#sheet').scrollTop = sc; }
   else openSheet(h);
@@ -2031,6 +2057,10 @@ function openAdmin(){
     <div class="btns"><button class="btn" data-settings>Back to settings</button></div>`);
   $('#sheet').dataset.panel = 'admin'; $('#sheet').scrollTop = keep;
 }
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-feature]'); if(!t) return;
+  setFeatured(t.dataset.feature, !isFeatured(S.events.find(x => x.id === t.dataset.feature)));
+});
 document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('[data-settings],[data-admin],[data-adminpick],[data-adminunlock],[data-adminlock],[data-setadmin],[data-rmmember],[data-restore],#adminNewCode'); if(!t) return;
   const d = t.dataset;
@@ -2613,7 +2643,8 @@ function ssPanelRender(){
   const tm = now.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' }), mm = tm.match(/^(.*?)\s*([AP]M)$/i);
   const evs = d => S.events.filter(e => e.starts_on === d && e.kind !== 'list').sort(sortEv);
   const cds = countdowns().filter(e => !isSecret(e)).slice(0, 3);
-  const lists = S.events.filter(e => e.kind === 'list' && !e.starts_on && !isSecret(e)).slice(0, 4);
+  const feat = featuredList();
+  const lists = S.events.filter(e => e.kind === 'list' && !e.starts_on && !isSecret(e) && e !== feat).slice(0, 4);
   const later = []; for(let i = 2; i <= 8 && later.length < 5; i++) evs(addDays(t, i)).forEach(e => later.length < 5 && later.push(e));
   const today = evs(t), tomorrow = evs(addDays(t, 1));
   box.innerHTML = `
@@ -2624,6 +2655,10 @@ function ssPanelRender(){
     <div class="sssec">Today</div>
     ${today.length ? today.map(e => ssRow(e, 'today', nowHM)).join('') : '<div class="ssnone">Nothing planned 🌤️</div>'}
     ${tomorrow.length ? `<div class="sssec">Tomorrow</div>${tomorrow.map(e => ssRow(e, 'later', nowHM)).join('')}` : ''}
+    ${feat ? (() => { const it = itemsOf(feat.id), left = it.filter(i => !i.done), fv = view(feat);
+      return `<div class="sssec">⭐ ${esc(fv.sticker || '☑️')} ${esc(fv.title || 'List')}</div><div class="ssfeat">${left.length
+        ? left.slice(0, 12).map(i => `<span>${esc(i.text)}</span>`).join('') + (left.length > 12 ? `<small>+${left.length - 12} more</small>` : '')
+        : `<small>${it.length ? 'All done ✓' : 'Nothing on the list yet'}</small>`}</div>`; })() : ''}
     ${later.length ? `<div class="sssec">Coming up</div>${later.map(e => ssRow(e, 'later', nowHM)).join('')}` : ''}
     ${lists.length ? `<div class="sssec">Lists</div><div class="sslists">${lists.map(e => { const left = itemsOf(e.id).filter(i => !i.done).length;
       return `<span>${esc(e.sticker || '☑️')} ${esc(e.title)} <small>${left ? left + ' left' : '✓'}</small></span>`; }).join('')}</div>` : ''}`;
@@ -2641,7 +2676,7 @@ function ssNext(){
   clearTimeout(SS.advT);
   const stage = $('#ssStage'); if(!SS.on || !stage) return;
   if(!SS.media.length){
-    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(S.family?.name || 'Family')}</b><span>Add photos and videos from your avatar → Screensaver</span></div>`;
+    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(S.family?.name || 'Family')}</b><span>Add photos in ⚙️ Settings → Family photos</span></div>`;
     return;
   }
   if(SS.fails > SS.media.length){                   // nothing would load: say why instead of showing a black screen
