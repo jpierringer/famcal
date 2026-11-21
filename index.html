@@ -624,6 +624,20 @@ main{padding:4px 16px 20px}
 .sbi .sbst{position:absolute;font-size:1em;line-height:1;transform:scale(2.2);font-style:normal;
   filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 3px 4px rgba(0,0,0,.3))}
 .sbi.stuck .sbst{transform:none;transition-delay:.35s}
+/* Slide projector style */
+.proj{position:absolute;inset:0;overflow:hidden;display:grid;place-items:center;
+  background:radial-gradient(70% 60% at 50% 48%,#2a2118 0%,#120e0a 55%,#070605 100%)}
+.pscreen{position:relative;width:60%;height:60%;border-radius:10px;overflow:hidden;background:#1a1510;transition:width .35s ease,height .35s ease;
+  box-shadow:0 0 70px 10px rgba(255,226,170,.13),0 0 180px 40px rgba(255,210,140,.07);animation:pjFlick 3.7s steps(1,end) infinite}
+.pslide{position:absolute;inset:0}
+.pslide .pic{position:absolute;inset:0;line-height:0;
+  -webkit-mask-image:radial-gradient(ellipse 75% 75% at 50% 50%,#000 55%,rgba(0,0,0,.72) 88%,rgba(0,0,0,.45) 100%);mask-image:radial-gradient(ellipse 75% 75% at 50% 50%,#000 55%,rgba(0,0,0,.72) 88%,rgba(0,0,0,.45) 100%)}
+.pslide .pic img,.pslide .pic video{width:100%;height:100%;object-fit:cover;filter:sepia(.22) saturate(.86) contrast(1.06) brightness(1.03)}
+.pslide .hot{position:absolute;inset:0;background:radial-gradient(ellipse 55% 50% at 50% 46%,rgba(255,244,214,.16),transparent 70%);mix-blend-mode:screen;pointer-events:none}
+.pshut{position:absolute;inset:0;background:#050403;opacity:0;z-index:3;pointer-events:none}
+.pdust{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
+@keyframes pjFlick{0%{filter:brightness(1)}7%{filter:brightness(.95)}9%{filter:brightness(1.03)}31%{filter:brightness(.98)}33%{filter:brightness(1)}61%{filter:brightness(.96)}62%{filter:brightness(1.02)}64%{filter:brightness(1)}88%{filter:brightness(.97)}}
+@media (prefers-reduced-motion: reduce){ .pscreen{animation:none} }
 /* Postcard style */
 .pc{position:absolute;left:50%;top:50%;perspective:2400px;will-change:transform}
 .pcin{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1.25s cubic-bezier(.45,.05,.25,1)}
@@ -2659,7 +2673,7 @@ function ssSection(){
       <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
       <label class="ssrow"><span>Photo style</span><select data-ss-set="style">${SS_STYLES.map(([k, n]) => `<option value="${k}" ${c.style === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       <label class="ssrow"><span>Each photo shows for</span>${sel('secs', [5,8,10,15,20,30], 'sec')}</label>
-      ${chk('sound', 'Play sound on videos')}
+      ${chk('sound', c.style === 'projector' ? 'Play sound (videos &amp; projector click)' : 'Play sound on videos')}
       ${chk('night', 'Dim at night (10pm–6am)')}` : ''}
       ${chk('shared', 'Ask who’s writing')}
       <div class="hint" style="margin:4px 0 0">Before anyone adds, edits or reacts, they pick their name and enter their PIN. The screen switches back after a minute of no use. Tip: sign this screen in as a “Family” member so nobody’s own account stays open.</div>
@@ -2683,7 +2697,7 @@ document.addEventListener('change', e => {
   else if(t.dataset && t.dataset.ssToggle === 'display') ssDisplay(t.checked);
   else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); reopenSettings(); }
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
-  else if(t.dataset && t.dataset.ssSet) ssSave({ [t.dataset.ssSet]: t.dataset.ssSet === 'style' ? t.value : +t.value });
+  else if(t.dataset && t.dataset.ssSet){ ssSave({ [t.dataset.ssSet]: t.dataset.ssSet === 'style' ? t.value : +t.value }); if(t.dataset.ssSet === 'style') reopenSettings(); }
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
   else if((t.id === 'ssShared' || t.id === 'ssShared2') && t.files.length){ const fs = [...t.files]; t.value = ''; photosAdd(fs); }
 });
@@ -2768,9 +2782,10 @@ function ssNext(){
   if(++SS.idx >= SS.order.length){ ssShuffle(); SS.idx = 0; }
   const m = SS.media[SS.order[SS.idx]]; if(!m){ ssShuffle(); SS.advT = setTimeout(ssNext, 50); return; }
   const cfg = ssCfg(), url = m.url ? ssUrl(m.url) : URL.createObjectURL(m.blob);
-  const pola = cfg.style === 'polaroid', scrap = cfg.style === 'scrapbook', post = cfg.style === 'postcard';
+  const pola = cfg.style === 'polaroid', scrap = cfg.style === 'scrapbook', post = cfg.style === 'postcard', proj = cfg.style === 'projector';
   stage.classList.toggle('pola', pola);
-  const layer = scrap ? scrapItem(m) : post ? postcardItem(m) : document.createElement('div'); if(!scrap && !post) layer.className = pola ? 'polw' : 'ssl'; layer.dataset.blob = m.url ? '' : url;
+  const layer = scrap ? scrapItem(m) : post ? postcardItem(m) : proj ? projSlide() : document.createElement('div');
+  if(!scrap && !post && !proj) layer.className = pola ? 'polw' : 'ssl'; layer.dataset.blob = m.url ? '' : url;
   const frame = pola ? polaroidFrame(m) : layer;                         // where the picture goes
   let done = false;
   const skip = () => { if(done) return; done = true; SS.fails++; if(!m.url) URL.revokeObjectURL(url); SS.advT = setTimeout(ssNext, 50); };
@@ -2779,6 +2794,7 @@ function ssNext(){
     if(pola){ layer.appendChild(frame); polaroidIn(stage, layer, m, url); }
     else if(scrap) scrapIn(stage, layer, m);
     else if(post) postcardIn(stage, layer, m, url);
+    else if(proj) projIn(stage, layer);
     else{
       const old = [...stage.children]; stage.appendChild(layer); void layer.offsetWidth; layer.classList.add('in');
       setTimeout(() => old.forEach(ssDrop), 1600);
@@ -2787,7 +2803,7 @@ function ssNext(){
   };
   if(m.type === 'video'){
     const v = document.createElement('video'); v.className = 'fg'; v.muted = !cfg.sound; v.playsInline = true; v.preload = 'auto'; v.src = url;
-    (pola || scrap || post ? frame.querySelector('.pic') : layer).appendChild(v);
+    (pola || scrap || post || proj ? frame.querySelector('.pic') : layer).appendChild(v);
     v.addEventListener('error', skip);
     v.addEventListener('canplay', () => show(() => {
       const go = () => { clearTimeout(SS.advT); SS.advT = setTimeout(ssNext, 800); };
@@ -2799,7 +2815,7 @@ function ssNext(){
   } else {
     const bg = new Image(), fg = new Image(); bg.className = 'bg'; fg.className = 'fg'; bg.alt = fg.alt = '';
     fg.style.setProperty('--kb', (cfg.secs + 2) + 's');
-    if(pola || scrap || post) frame.querySelector('.pic').appendChild(fg); else layer.append(bg, fg);
+    if(pola || scrap || post || proj) frame.querySelector('.pic').appendChild(fg); else layer.append(bg, fg);
     fg.onload = () => show(() => { SS.advT = setTimeout(ssNext, cfg.secs * 1000);
       if(scrap){ clearTimeout(SB.settleT); SB.settleT = setTimeout(() => scrapSettle(layer), Math.max(2600, cfg.secs * 1000 * .55)); }
       if(post){ clearTimeout(PC.flipT); PC.flipT = setTimeout(() => postcardFlip(layer), Math.max(2600, cfg.secs * 1000 * .55)); } });
@@ -2814,7 +2830,7 @@ function ssDrop(el){ [el, ...el.querySelectorAll('[data-blob]')].forEach(x => x.
    classic:  full-screen crossfade with a slow zoom.
    polaroid: each photo is a white-framed print tossed in from the side — small and tilted — that grows and
              straightens as it lands in the middle, on top of the pile of earlier prints. */
-const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid'], ['scrapbook', '✂️ Scrapbook'], ['postcard', '💌 Postcard']];
+const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid'], ['scrapbook', '✂️ Scrapbook'], ['postcard', '💌 Postcard'], ['projector', '📽️ Slide projector']];
 const POLA_KEEP = 4;                                    // prints left in the pile under the new one
 function polaroidFrame(m){
   const card = document.createElement('div'); card.className = 'pol';
@@ -3017,6 +3033,71 @@ function postcardFlip(el){                             // turn it over to read t
   if(!el || !el.isConnected || el.classList.contains('flipped')) return;
   el.classList.add('flipped');
   const v = el.querySelector('video'); if(v) v.pause();
+}
+
+/* slide projector: a dark room, a warm slightly faded picture with soft edges, a flickering lamp and dust on the
+   lens. Each change blinks the shutter, clacks the old slide out and the new one in, then hunts for focus. */
+function projSlide(){ const el = document.createElement('div'); el.className = 'pslide'; el.innerHTML = '<div class="pic"></div><i class="hot"></i>'; return el; }
+let PJ_AUDIO = null;
+function projClick(){                                  // a synthesized carousel "ka-chunk" (only when sound is on)
+  if(!ssCfg().sound) return;
+  try{
+    const ac = PJ_AUDIO || (PJ_AUDIO = new (window.AudioContext || window.webkitAudioContext)()); if(ac.state === 'suspended') ac.resume();
+    const hit = (t, dur, freq, vol) => {
+      const n = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate), d = n.getChannelData(0);
+      for(let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      src.buffer = n; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2; g.gain.value = vol;
+      src.connect(f).connect(g).connect(ac.destination); src.start(ac.currentTime + t);
+    };
+    hit(0, .05, 2400, .5); hit(.05, .09, 420, .9); hit(.30, .06, 1800, .35);
+  }catch(e){}
+}
+function projRoom(stage){
+  let room = stage.querySelector('.proj'); if(room) return room;
+  [...stage.children].forEach(ssDrop);
+  room = document.createElement('div'); room.className = 'proj';
+  room.innerHTML = '<div class="pscreen"><div class="pshut"></div><canvas class="pdust"></canvas></div>';
+  stage.appendChild(room);
+  const cv = room.querySelector('.pdust'), cx = cv.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let last = 0, hair = null;
+  const tick = t => {                                  // a few specks of dust and the odd hair, redrawn ~12 times a second
+    if(!room.isConnected || !SS.on) return;
+    requestAnimationFrame(tick);
+    if(reduce || t - last < 85) return; last = t;
+    const w = cv.width = cv.clientWidth, h = cv.height = cv.clientHeight; if(!w) return;
+    cx.clearRect(0, 0, w, h);
+    const n = Math.random() < .35 ? 0 : 1 + Math.floor(Math.random() * 4);
+    for(let i = 0; i < n; i++){ cx.fillStyle = `rgba(20,14,8,${rnd(.25, .6)})`; cx.beginPath(); cx.arc(rnd(0, w), rnd(0, h), rnd(.6, 2.4), 0, 7); cx.fill(); }
+    if(!hair && Math.random() < .012) hair = { x:rnd(.1, .9) * w, y:rnd(.1, .9) * h, a:rnd(0, 6.3), l:rnd(.04, .12) * w, life:rnd(8, 22) };
+    if(hair){ cx.strokeStyle = 'rgba(25,18,10,.55)'; cx.lineWidth = 1.3; cx.beginPath(); cx.moveTo(hair.x, hair.y);
+      cx.quadraticCurveTo(hair.x + Math.cos(hair.a) * hair.l * .6 + 8, hair.y + Math.sin(hair.a) * hair.l * .6 - 8, hair.x + Math.cos(hair.a) * hair.l, hair.y + Math.sin(hair.a) * hair.l); cx.stroke();
+      hair.x += rnd(-1, 1); hair.y += rnd(-1, 1); if(--hair.life <= 0) hair = null; }
+    if(Math.random() < .04){ cx.fillStyle = 'rgba(255,248,230,.07)'; cx.fillRect(rnd(0, w), 0, rnd(1, 2.5), h); }   // a faint scratch
+  };
+  requestAnimationFrame(tick);
+  return room;
+}
+function projIn(stage, el){
+  const room = projRoom(stage), scr = room.querySelector('.pscreen'), shut = room.querySelector('.pshut');
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const media = el.querySelector('img,video'), nw = media.naturalWidth || media.videoWidth || 3, nh = media.naturalHeight || media.videoHeight || 2;
+  const k = Math.min(W * .84 / nw, H * .8 / nh), sw = Math.round(nw * k), sh = Math.round(nh * k);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const old = [...scr.querySelectorAll('.pslide')];
+  // the light on the screen takes the new slide's shape while the shutter is closed
+  shut.animate([{ opacity:0 }, { opacity:.96, offset:.25 }, { opacity:.96, offset:.6 }, { opacity:0 }], { duration:reduce ? 600 : 820, easing:'ease-in-out' });
+  setTimeout(() => { scr.style.width = sw + 'px'; scr.style.height = sh + 'px'; }, reduce ? 150 : 200);
+  old.forEach(o => { if(!reduce) o.animate([{ transform:'none' }, { transform:'translateX(-34%)' }], { duration:260, easing:'cubic-bezier(.6,0,.9,.5)', fill:'forwards' });
+    setTimeout(() => ssDrop(o), 300); });
+  scr.insertBefore(el, shut);
+  if(reduce){ el.animate([{ opacity:0 }, { opacity:1 }], { duration:500, delay:250, fill:'backwards' }); return; }
+  setTimeout(projClick, 120);
+  el.animate([{ transform:'translateX(30%)', opacity:0 }, { transform:'translateX(30%)', opacity:0, offset:.4 }, { transform:'translateX(30%)', opacity:1, offset:.45 }, { transform:'translateX(-1.2%)', offset:.85 }, { transform:'none', opacity:1 }],
+    { duration:560, easing:'cubic-bezier(.2,.7,.3,1)', fill:'backwards' });
+  el.querySelector('.pic').animate([                    // focus hunting: soft, too sharp, a little soft again, then crisp
+    { filter:'blur(9px)' }, { filter:'blur(9px)', offset:.3 }, { filter:'blur(0px)', offset:.58 }, { filter:'blur(2.2px)', offset:.75 }, { filter:'blur(0px)' }],
+    { duration:1700, easing:'ease-in-out' });
 }
 
 /* ---------- Start / stop / idle ---------- */
