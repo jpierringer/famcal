@@ -715,6 +715,17 @@ main{padding:4px 16px 20px}
 .ssr{position:relative;display:flex;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:10px 12px 10px 16px;margin:0 0 8px;box-shadow:var(--shadow)}
 .ssr::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:0 4px 4px 0;background:var(--c)}
 .ssr.past{opacity:.38}
+.ssdone{color:rgba(255,255,255,.5);font-weight:700;font-size:13px;margin:0 2px 8px;letter-spacing:.02em}
+.pastfold{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px;margin:0 0 10px;border-radius:12px;background:var(--soft);color:var(--muted);font-weight:800;font-size:14px;text-align:left}
+.pastfold span{flex:1}
+.pastfold i{font-style:normal;font-size:12px;opacity:.8}
+.pastfold.on{margin-bottom:6px}
+.pastlist{margin:0 0 12px}
+.prow{position:relative;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 14px;margin:0 0 4px;border-radius:10px;background:var(--card);opacity:.6;font-size:14px;cursor:pointer}
+.prow::before{content:"";position:absolute;left:5px;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--c)}
+.prow .pt{color:var(--muted);font-weight:700;font-size:12px;min-width:48px}
+.prow b{flex:1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:line-through;text-decoration-color:rgba(0,0,0,.4);text-decoration-thickness:1.5px}
+.prow .pk{color:#22a06b;font-weight:900}
 .ssr .t{flex:none;width:56px;font-size:13px;font-weight:800;color:var(--c);line-height:1.2}
 .ssr .t small{display:block;color:var(--muted);font-weight:700;font-size:12px}
 .ssr .m{flex:1;min-width:0}
@@ -1415,9 +1426,8 @@ function renderMain(){
         return `<button class="pin" data-open="${e.id}">${esc(e.sticker||'☑️')} ${esc(e.title)} <small>${left ? left+' left' : 'done ✓'}</small></button>`; }).join('')}</div>`;
     }
     h += `<div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>`;
-    const evs = dayEvents(S.sel);
-    h += evs.length ? evs.map(e => card(e)).join('') : `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
-      <button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`;
+    h += dayList(S.sel, `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
+      <button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`);
     const up = [];
     for(let i=1; i<=21 && up.length<6; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<6 && up.push(e));
     if(up.length) h += `<div class="sub">Coming up</div>` + up.map(rowHTML).join('');
@@ -1454,7 +1464,7 @@ function renderDesk(){
     h += pushNudge() + countdownStrip();
     const evs = dayEvents(S.sel), up = [];
     for(let i=1; i<=30 && up.length<12; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<12 && up.push(e));
-    h += `<div class="split"><div><div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>${evs.length ? evs.map(e => card(e)).join('') : empty}</div>
+    h += `<div class="split"><div><div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>${dayList(S.sel, empty)}</div>
       <div><div class="sub">Coming up</div>${up.length ? up.map(rowHTML).join('') : '<p style="color:var(--muted)">Nothing else on the calendar yet.</p>'}</div></div>`;
   }
   $('#main').innerHTML = h;
@@ -1598,6 +1608,39 @@ function reactsHTML(v, onCard){
   return `<div class="reacts">${chips}<button class="addr${open ? ' on' : ''}" data-reactpick="${v.id}" aria-label="Add a reaction">${open ? '✕' : '＋😀'}</button></div>`
     + (open ? `<div class="rtray">${REACT.map(st => `<button data-react="${st}" data-id="${v.id}">${st}</button>`).join('')}</div>` : '');
 }
+
+// Today's events that have already ended (or, with no end time, started over an hour ago). All-day ones never count.
+const nowHM = () => { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+function isOver(e, hm = nowHM()){
+  if(e.starts_on !== todayStr() || !e.start_time || e.kind === 'list') return false;
+  const st = hhmm(e.start_time), [h, m] = st.split(':').map(Number), en = hhmm(e.end_time);
+  return (en && en > st ? en : pad(Math.min(23, h + 1)) + ':' + pad(m)) <= hm;
+}
+let showPast = false;                                   // the "earlier today" group stays folded unless opened
+function dayList(d, empty){                             // the day's cards, with finished ones folded into one line on top
+  const evs = dayEvents(d), done = d === todayStr() ? evs.filter(e => isOver(e)) : [], rest = evs.filter(e => !done.includes(e));
+  let h = '';
+  if(done.length){
+    h += `<button class="pastfold ${showPast ? 'on' : ''}" data-pastfold aria-expanded="${showPast}"><span>✓ ${done.length} earlier today</span><i>${showPast ? 'Hide' : 'Show'}</i></button>`;
+    if(showPast) h += `<div class="pastlist">${done.map(pastRow).join('')}</div>`;
+  }
+  h += rest.length ? rest.map(e => card(e)).join('')
+    : done.length ? `<div class="empty" style="padding:22px 10px"><span class="big">🌙</span>That’s everything for today.</div>` : empty;
+  return h;
+}
+function pastRow(ev){
+  const v = view(ev), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
+  return `<div class="prow" ${hid ? '' : `data-open="${v.id}"`} style="--c:${esc(o.color)}"><span class="pt">${esc(fmtTime(v.start_time))}</span>
+    <span class="ps">${hid ? '🔒' : esc(stickerOf(v))}</span><b>${hid ? esc(busyNames(v).text) : esc(v.title || 'Untitled')}</b><span class="pk">✓</span></div>`;
+}
+let pastSig = '';                                       // re-draw today's view only when something has just finished
+setInterval(() => {
+  if(document.visibilityState !== 'visible' || S.tab !== 'cal' || S.sel !== todayStr() || (typeof C !== 'undefined' && C)) return;
+  if(isDesk() && deskView() !== 'day') return;
+  const sig = dayEvents(todayStr()).filter(e => isOver(e)).map(e => e.id).join();
+  if(sig !== pastSig){ pastSig = sig; renderMain(); }
+}, 30000);
+document.addEventListener('click', e => { if(e.target.closest && e.target.closest('[data-pastfold]')){ showPast = !showPast; renderMain(); } });
 
 function rowHTML(ev){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
@@ -2759,7 +2802,9 @@ function ssPanelRender(){
     ${cds.length ? `<div class="sscds">${cds.map(e => { const n = daysUntil(e.starts_on), o = member(e.owner_id) || { color:'#ff6b4a' };
       return `<span class="sscd" style="--c:${esc(o.color)}">${esc(view(e).sticker || '⏳')} <b>${n === 0 ? 'Today!' : n + 'd'}</b> <span>${esc(view(e).title)}</span></span>`; }).join('')}</div>` : ''}
     <div class="sssec">Today</div>
-    ${today.length ? today.map(e => ssRow(e, 'today', nowHM)).join('') : '<div class="ssnone">Nothing planned 🌤️</div>'}
+    ${(() => { const done = today.filter(e => isOver(e, nowHM)), rest = today.filter(e => !done.includes(e));
+      return (done.length ? `<div class="ssdone">✓ ${done.length} earlier today</div>` : '')
+        + (rest.length ? rest.map(e => ssRow(e, 'today', nowHM)).join('') : `<div class="ssnone">${done.length ? 'That’s everything for today 🌙' : 'Nothing planned 🌤️'}</div>`); })()}
     ${tomorrow.length ? `<div class="sssec">Tomorrow</div>${tomorrow.map(e => ssRow(e, 'later', nowHM)).join('')}` : ''}
     ${feat ? (() => { const it = itemsOf(feat.id), left = it.filter(i => !i.done), fv = view(feat);
       return `<div class="sssec">⭐ ${esc(fv.sticker || '☑️')} ${esc(fv.title || 'List')}</div><div class="ssfeat">${left.length
