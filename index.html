@@ -2683,7 +2683,7 @@ function ssSection(){
       <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
       <label class="ssrow"><span>Photo style</span><select data-ss-set="style">${SS_STYLES.map(([k, n]) => `<option value="${k}" ${c.style === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       <label class="ssrow"><span>Each photo shows for</span>${sel('secs', [5,8,10,15,20,30], 'sec')}</label>
-      ${chk('sound', c.style === 'projector' ? 'Play sound (videos &amp; projector click)' : 'Play sound on videos')}
+      ${chk('sound', c.style === 'projector' || c.style === 'mix' ? 'Play sound (videos &amp; projector click)' : 'Play sound on videos')}
       ${chk('night', 'Dim at night (10pm–6am)')}` : ''}
       ${chk('shared', 'Ask who’s writing')}
       <div class="hint" style="margin:4px 0 0">Before anyone adds, edits or reacts, they pick their name and enter their PIN. The screen switches back after a minute of no use. Tip: sign this screen in as a “Family” member so nobody’s own account stays open.</div>
@@ -2773,7 +2773,14 @@ function ssPanelRender(){
 const ssRefresh = () => { if(SS.on) ssPanelRender(); };
 
 /* ---------- The photo / video reel ---------- */
+// "Mix it up": a different style each time the slideshow has been through every photo once
+function ssMixPick(){
+  const all = SS_STYLES.map(s => s[0]).filter(k => k !== 'mix' && k !== SS.mix);
+  SS.mix = all[Math.floor(Math.random() * all.length)];
+}
+const ssStyle = () => { const c = ssCfg(); if(c.style !== 'mix') return c.style; if(!SS.mix) ssMixPick(); return SS.mix; };
 function ssShuffle(){
+  if(ssCfg().style === 'mix') ssMixPick();
   const a = SS.media.map((_, i) => i);
   for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   SS.order = a; SS.idx = -1;
@@ -2792,7 +2799,7 @@ function ssNext(){
   if(++SS.idx >= SS.order.length){ ssShuffle(); SS.idx = 0; }
   const m = SS.media[SS.order[SS.idx]]; if(!m){ ssShuffle(); SS.advT = setTimeout(ssNext, 50); return; }
   const cfg = ssCfg(), url = m.url ? ssUrl(m.url) : URL.createObjectURL(m.blob);
-  const pola = cfg.style === 'polaroid', scrap = cfg.style === 'scrapbook', post = cfg.style === 'postcard', proj = cfg.style === 'projector';
+  const st = ssStyle(), pola = st === 'polaroid', scrap = st === 'scrapbook', post = st === 'postcard', proj = st === 'projector';
   stage.classList.toggle('pola', pola);
   const layer = scrap ? scrapItem(m) : post ? postcardItem(m) : proj ? projSlide() : document.createElement('div');
   if(!scrap && !post && !proj) layer.className = pola ? 'polw' : 'ssl'; layer.dataset.blob = m.url ? '' : url;
@@ -2826,7 +2833,7 @@ function ssNext(){
   } else {
     const bg = new Image(), fg = new Image(); bg.className = 'bg'; fg.className = 'fg'; bg.alt = fg.alt = '';
     fg.style.setProperty('--kb', (cfg.secs + 2) + 's');
-    const kb = cfg.style === 'kenburns';
+    const kb = st === 'kenburns';
     if(pola || scrap || post || proj) frame.querySelector('.pic').appendChild(fg);
     else if(kb){ layer.classList.add('kbl'); layer.appendChild(fg); }
     else layer.append(bg, fg);
@@ -2844,7 +2851,7 @@ function ssDrop(el){ [el, ...el.querySelectorAll('[data-blob]')].forEach(x => x.
    classic:  full-screen crossfade with a slow zoom.
    polaroid: each photo is a white-framed print tossed in from the side — small and tilted — that grows and
              straightens as it lands in the middle, on top of the pile of earlier prints. */
-const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid'], ['scrapbook', '✂️ Scrapbook'], ['postcard', '💌 Postcard'], ['projector', '📽️ Slide projector'], ['kenburns', '🎬 Ken Burns']];
+const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polaroid'], ['scrapbook', '✂️ Scrapbook'], ['postcard', '💌 Postcard'], ['projector', '📽️ Slide projector'], ['kenburns', '🎬 Ken Burns'], ['mix', '🔀 Mix it up']];
 const POLA_KEEP = 4;                                    // prints left in the pile under the new one
 function polaroidFrame(m){
   const card = document.createElement('div'); card.className = 'pol';
