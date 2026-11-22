@@ -2484,9 +2484,16 @@ document.addEventListener('keydown', e => {
 });
 
 // swipe: week strip = ±1 week, day list = ±1 day
+// a swipe that starts on something that scrolls sideways (countdown tiles, sticker trays…) scrolls that, not the day
+function inSideScroller(t, stop){
+  for(let n = t; n && n !== stop; n = n.parentElement){
+    if(n.scrollWidth > n.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true;
+  }
+  return false;
+}
 function swipe(el, fn){
   let x0, y0;
-  el.addEventListener('touchstart', e => { if(e.target.closest('.pinned,.tray,.filters,input')){ x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, {passive:true});
+  el.addEventListener('touchstart', e => { if(e.target.closest('.pinned,.tray,.filters,.cds,input') || inSideScroller(e.target, el)){ x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, {passive:true});
   el.addEventListener('touchend', e => { if(x0 == null) return; const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
     if(Math.abs(dx) > 60 && Math.abs(dy) < 45) fn(dx < 0 ? 1 : -1); }, {passive:true});
 }
