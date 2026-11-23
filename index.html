@@ -742,6 +742,7 @@ main{padding:4px 16px 20px}
 .card.feat{box-shadow:0 0 0 2px #f5b301,var(--shadow)}
 .feattag{display:inline-block;margin:-2px 0 6px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#f5b301 22%,var(--soft));font-size:12px;font-weight:800;letter-spacing:.02em}
 .sfeat{margin:14px 0 4px}
+.featslot{margin:16px 0 4px}
 .sfeat .card{margin:0}
 .togsub{display:block;font-size:12px;color:var(--muted);font-weight:600}
 .sslists span{padding:5px 11px;border-radius:999px;background:var(--card);font-size:14px;font-weight:700}
@@ -1419,7 +1420,6 @@ function renderMain(){
   if(S.tab === 'cal'){
     h += pushNudge();
     if(S.sel === todayStr()) h += countdownStrip();
-    h += featuredCard(8);
     if(S.sel === todayStr()){
       const pins = S.events.filter(e => e.kind==='list' && !e.starts_on && passesFilter(e) && !isFeatured(e)).map(view);
       if(pins.length) h += `<div class="pinned">${pins.map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
@@ -1428,6 +1428,7 @@ function renderMain(){
     h += `<div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>`;
     h += dayList(S.sel, `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
       <button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`);
+    h += featuredList() ? `<div class="featslot">${featuredCard(8)}</div>` : '';      // the featured list sits between the day and what's coming up
     const up = [];
     for(let i=1; i<=21 && up.length<6; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<6 && up.push(e));
     if(up.length) h += `<div class="sub">Coming up</div>` + up.map(rowHTML).join('');
