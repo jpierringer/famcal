@@ -608,6 +608,9 @@ main{padding:4px 16px 20px}
 .sbi .paper.k-corners,.sbi .paper.k-doodle{background:none}
 .sbi .pic{overflow:hidden;background:#222;line-height:0}
 .sbi .pic img,.sbi .pic video{display:block;width:100%;height:100%;object-fit:cover;filter:saturate(1.06) contrast(1.03)}
+.pol .cap .ct,.sbi .cap .ct{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pol .cap small,.sbi .cap small{font-size:.72em;opacity:.75;margin-top:.1em}
+.sbi .cap.note{flex-direction:column;text-align:center;line-height:1.05;padding:.25em .5em .35em}
 .sbi .cap{display:flex;align-items:center;justify-content:center;font-family:Caveat,"Marker Felt","Bradley Hand","Segoe Print",cursive;font-weight:600}
 .sbi .tape,.sbi .cn,.sbi .ddl,.sbi .sbst{opacity:0;transition:opacity .25s,transform .35s cubic-bezier(.2,.8,.3,1.4)}
 .sbi.stuck .tape,.sbi.stuck .cn,.sbi.stuck .ddl,.sbi.stuck .sbst{opacity:1}
@@ -628,6 +631,12 @@ main{padding:4px 16px 20px}
 .ssl.kbl{overflow:hidden;transition:opacity 2.2s ease}
 .ssl.kbl img.fg{position:absolute;inset:auto;max-width:none;object-fit:fill;transform-origin:0 0;animation:none;will-change:transform;filter:saturate(1.05) contrast(1.03)}
 .ssl.kbl::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 85% at 50% 45%,transparent 60%,rgba(0,0,0,.35)),linear-gradient(transparent 70%,rgba(0,0,0,.35))}
+.kbcap.note{max-width:62cqw}
+.kbcap.note b{font-size:max(20px,3cqmin);line-height:1.2}
+.pjcap{position:absolute;left:50%;bottom:3.2cqh;transform:translateX(-50%);max-width:70cqw;text-align:center;color:#f3e3c3;opacity:0;transition:opacity 1s ease;
+  font:600 max(15px,2.3cqmin)/1.3 "Courier New",Courier,monospace;letter-spacing:.02em;text-shadow:0 0 12px rgba(255,210,140,.25)}
+.pjcap.on{opacity:.85}
+.pjcap small{opacity:.7}
 .kbcap{position:absolute;left:4cqw;bottom:6cqh;z-index:2;color:#fff;opacity:0;text-shadow:0 2px 14px rgba(0,0,0,.6);
   border-left:3px solid rgba(255,255,255,.85);padding:.15em 0 .2em .7em;animation:kbIn 1.2s ease forwards,kbOut 1.2s ease forwards}
 .kbcap b{display:block;font:italic 600 max(20px,3.2cqmin)/1.1 Georgia,"Times New Roman",serif;letter-spacing:.01em}
@@ -696,7 +705,7 @@ main{padding:4px 16px 20px}
   box-shadow:0 2px 3px rgba(0,0,0,.25),0 18px 50px rgba(0,0,0,.55);background-image:linear-gradient(170deg,#fffef9,#f1eee5)}
 .pol .pic{background:#111;line-height:0;overflow:hidden}
 .pol .pic img,.pol .pic video{display:block;max-width:64cqw;max-height:64cqh;width:auto;height:auto;object-fit:contain;filter:contrast(1.04) saturate(1.08) sepia(.06)}
-.pol .cap{height:max(44px,11cqmin);display:flex;align-items:center;justify-content:center;color:#3b3a37;
+.pol .cap{min-height:max(44px,11cqmin);max-width:64cqw;padding:.25em .6em .35em;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.05;color:#3b3a37;
   font:500 max(16px,3.4cqmin)/1 Caveat,"Marker Felt","Bradley Hand","Segoe Print",cursive}
 .ssempty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:10px;padding:24px;color:var(--muted);font-weight:600;
   background:radial-gradient(120% 120% at 70% 20%,#2a2420,#0c0b0a)}
@@ -765,6 +774,16 @@ main{padding:4px 16px 20px}
 .pcell img{width:100%;height:100%;object-fit:cover}
 .pmiss{font-size:28px;opacity:.5}
 .pby{position:absolute;left:5px;bottom:5px}
+.pcell[data-photo]{cursor:pointer}
+.pcn{position:absolute;right:5px;bottom:5px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:800}
+.pview{margin:10px 0 0;border-radius:14px;overflow:hidden;background:#111;display:grid;place-items:center;min-height:180px}
+.pview img{display:block;width:100%;max-height:42vh;object-fit:contain}
+.pcm{display:flex;align-items:flex-start;gap:9px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.pcb{flex:1;line-height:1.35}
+.pcb small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.pcx{width:26px;height:26px;border-radius:50%;background:var(--soft);color:var(--muted);font-size:12px;font-weight:800;flex:none}
+.pcadd{display:flex;gap:8px;margin-top:12px;align-items:center}
+.pcadd .field{flex:1;margin:0}
 .pdel{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center}
 </style>
 </head>
@@ -1081,7 +1100,7 @@ function parseQuick(raw, opts={}){
 }
 
 /* ========================= State ========================= */
-const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false, media:[], mediaMissing:true };
+const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false, media:[], mediaMissing:true, photoNotes:[] };
 let B; // backend
 const member = id => (S.allMembers || S.members).find(m => m.id === id);
 const isAdmin = m => !!(m && m.is_admin);
@@ -1246,10 +1265,11 @@ function SupaBackend(){
       famId = fam?.id;
       const cs = await sb.from('custom_stickers').select('*').order('created_at');   // optional table: app works without it
       const md = await sb.from('media').select('*').order('added_at');                 // optional table: shared photos
+      const pc = await sb.from('media_comments').select('*').order('created_at');      // optional table: photo comments
       const privates = {}; (privs||[]).forEach(p => privates[p.event_id] = p);
       return { family:fam, members, meId,
         events: events.map(e => ({...e, start_time:hhmm(e.start_time), end_time:hhmm(e.end_time), invitees:e.invitees||[]})),
-        items, rsvps, reactions, privates, custom: cs.error ? [] : cs.data, customMissing: !!cs.error, media: md.error ? null : md.data };
+        items, rsvps, reactions, privates, custom: cs.error ? [] : cs.data, customMissing: !!cs.error, media: md.error ? null : md.data, photoNotes: pc.error ? [] : pc.data };
     },
     async addSticker(c){ ok(await sb.from('custom_stickers').upsert({family_id:famId, created_by:meId, emoji:c.emoji, keywords:c.keywords}, {onConflict:'family_id,emoji'})); },
     async deleteSticker(id){ ok(await sb.from('custom_stickers').delete().eq('id', id)); },
@@ -1260,6 +1280,8 @@ function SupaBackend(){
       try{ ok(await sb.from('media').insert({id:p.id, family_id:famId, uploaded_by:meId, path, sha256:p.sha256, bytes:p.blob.size, width:p.width, height:p.height})); }
       catch(e){ PHOTO_STORE.remove(sb, [path]).catch(()=>{}); throw e; }        // no orphan files when the row is refused (cap, duplicate)
     },
+    async addPhotoComment(mediaId, body){ ok(await sb.from('media_comments').insert({media_id:mediaId, family_id:famId, author_id:meId, body})); },
+    async deletePhotoComment(id){ ok(await sb.from('media_comments').delete().eq('id', id)); },
     async removePhoto(row){ ok(await sb.from('media').delete().eq('id', row.id)); await PHOTO_STORE.remove(sb, [row.path]).catch(()=>{}); },
     photoLinks: paths => PHOTO_STORE.links(sb, paths),
     async saveEvent(ev){
@@ -1309,7 +1331,7 @@ function SupaBackend(){
     async testPush(){ const r = await sb.functions.invoke(PUSH_FN, {body:{type:'test'}}); if(r.error) throw new Error(await fnError(r.error)); return r.data; },
     subscribe(onChange){
       const ch = sb.channel('famcal-live');
-      ['events','event_private','list_items','rsvps','reactions','members','families','custom_stickers','media'].forEach(t =>
+      ['events','event_private','list_items','rsvps','reactions','members','families','custom_stickers','media','media_comments'].forEach(t =>
         ch.on('postgres_changes', {event:'*', schema:SCHEMA, table:t}, onChange));
       ch.subscribe();
       document.addEventListener('visibilitychange', () => { if(!document.hidden) onChange(); });
@@ -1322,7 +1344,7 @@ async function refresh(){
   const d = await B.load();
   Object.assign(S, { family:d.family, allMembers:d.members, members:d.members.filter(m => !m.removed_at), events:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
     custom:(d.custom||[]).map(c => ({...c, words:(c.keywords||'').split(',').map(w => w.trim()).filter(Boolean)})), customMissing:!!d.customMissing,
-    media:d.media || [], mediaMissing: !d.media });
+    media:d.media || [], mediaMissing: !d.media, photoNotes:d.photoNotes || [] });
   S.me = S.members.find(m => m.id === d.meId);
   if(!S.me) throw new Error('not-member');
   render();
@@ -2693,20 +2715,67 @@ async function openPhotos(){                 // see and remove the family's shar
   rows.forEach(r => { const c = cached.get(r.id); if(c && c.blob){ const u = URL.createObjectURL(c.blob); urls[r.id] = u; blobs.push(u); } });
   const need = rows.filter(r => !urls[r.id]);
   if(need.length){ try{ const l = await B.photoLinks(need.map(r => r.path)); need.forEach(r => { if(l[r.path]) urls[r.id] = l[r.path]; }); }catch(e){} }
-  openSheet(`<h3>Shared photos</h3><p style="color:var(--muted);margin:6px 0 12px">${S.media.length} of ${photoCap()} · every frame in the family shows these.</p>
+  ($('#sheet').dataset.blobs || '').split(' ').filter(Boolean).forEach(u => URL.revokeObjectURL(u));   // coming back from one photo
+  PHOTO_URLS = urls;
+  openSheet(`<h3>Shared photos</h3><p style="color:var(--muted);margin:6px 0 12px">${S.media.length} of ${photoCap()} · every frame in the family shows these. Tap a photo to add a caption or memory.</p>
     <input type="file" id="ssShared2" accept="image/*,.heic,.heif" multiple class="hidden">
     <div class="btns" style="margin:0 0 12px"><button class="btn primary" data-photoadd>＋ Add photos</button></div>
     ${rows.length ? `<div class="pgrid">${rows.map(r => { const m = member(r.uploaded_by);
-      return `<div class="pcell">${urls[r.id] ? `<img src="${esc(urls[r.id])}" alt="" loading="lazy">` : '<span class="pmiss">🖼️</span>'}
-        ${m ? `<span class="pby">${avatar(m, 'sm')}</span>` : ''}<button class="pdel" data-delphoto="${r.id}" aria-label="Remove photo">✕</button></div>`; }).join('')}</div>`
+      const n = photoComments(r.id).length;
+      return `<div class="pcell" data-photo="${r.id}">${urls[r.id] ? `<img src="${esc(urls[r.id])}" alt="" loading="lazy">` : '<span class="pmiss">🖼️</span>'}
+        ${m ? `<span class="pby">${avatar(m, 'sm')}</span>` : ''}${n ? `<span class="pcn">💬 ${n}</span>` : ''}<button class="pdel" data-delphoto="${r.id}" aria-label="Remove photo">✕</button></div>`; }).join('')}</div>`
       : '<div class="empty"><span class="big">🖼️</span>No shared photos yet.</div>'}`);
   $('#sheet').dataset.panel = 'photos';
   $('#sheet').dataset.blobs = blobs.join(' ');
 }
+/* ---------- Photo comments: anyone in the family can add a caption or memory; the frames show it with the photo ---------- */
+let PHOTO_URLS = {};
+const photoComments = id => (S.photoNotes || []).filter(c => c.media_id === id);
+function photoNote(m){                               // one comment to show with this photo on the frame (a different one each time)
+  const cs = m && m.mid ? photoComments(m.mid) : []; if(!cs.length) return null;
+  const c = pickOne(cs), a = member(c.author_id);
+  return { text:c.body, by:a ? firstName(a.name) : '' };
+}
+async function openPhoto(id, keepTyping){
+  const r = S.media.find(x => x.id === id); if(!r) return openPhotos();
+  let url = PHOTO_URLS[id];
+  if(!url){ try{ url = (await B.photoLinks([r.path]))[r.path]; }catch(e){} }
+  const up = member(r.uploaded_by), cs = photoComments(id);
+  const when = d => new Date(d).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  const draft = keepTyping ? ($('#pcText')?.value || '') : '';
+  openSheet(`<button class="pill" data-photos>← All photos</button>
+    <div class="pview">${url ? `<img src="${esc(url)}" alt="">` : '<span class="pmiss">🖼️</span>'}</div>
+    <div class="hint" style="margin:8px 2px 0">${up ? `Added by ${esc(firstName(up.name))} · ` : ''}${esc(when(r.added_at))}</div>
+    <div class="lbl">💬 Captions &amp; memories</div>
+    ${cs.length ? cs.map(c => { const a = member(c.author_id) || { name:'Someone', emoji:'🙂', color:'#999' };
+      return `<div class="pcm">${avatar(a, 'sm')}<div class="pcb"><b>${esc(firstName(a.name))}</b> ${esc(c.body)}<small>${esc(when(c.created_at))}</small></div>
+        ${c.author_id === S.me.id ? `<button class="pcx" data-delcomment="${c.id}" aria-label="Delete comment">✕</button>` : ''}</div>`; }).join('')
+      : '<div class="hint" style="margin:2px 2px 10px">No comments yet. Write a caption or a memory — the family frames show it with this photo.</div>'}
+    <div class="pcadd"><input class="field" id="pcText" maxlength="140" placeholder="Add a caption or memory…" autocomplete="off" enterkeyhint="send" value="${esc(draft)}">
+      <button class="btn primary" data-postcomment="${id}">Post</button></div>`);
+  $('#sheet').dataset.panel = 'photo';
+  if(keepTyping) setTimeout(() => $('#pcText')?.focus(), 50);
+}
+async function postComment(id){
+  const i = $('#pcText'), body = (i?.value || '').trim(); if(!body) return i?.focus();
+  penGate(async () => {
+    try{ await B.addPhotoComment(id, body); i.value = ''; await refresh(); openPhoto(id); toast('💬 Added — the frames will show it'); }
+    catch(e){ toast('⚠️ ' + (/media_comments/.test(e.message) ? 'Run the latest schema.sql in Supabase to add comments' : e.message)); }
+  });
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('[data-photo],[data-postcomment],[data-delcomment]'); if(!t || e.target.closest('[data-delphoto]')) return;
+  if(t.dataset.photo) openPhoto(t.dataset.photo);
+  else if(t.dataset.postcomment) postComment(t.dataset.postcomment);
+  else if(t.dataset.delcomment){ const c = S.photoNotes.find(x => x.id === t.dataset.delcomment); if(!c || !confirm('Delete your comment?')) return;
+    B.deletePhotoComment(c.id).then(refresh).then(() => { openPhoto(c.media_id); toast('Comment deleted'); }).catch(err => toast('⚠️ ' + err.message)); }
+});
+document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id === 'pcText'){ e.preventDefault(); const b = document.querySelector('[data-postcomment]'); b && b.click(); } });
+
 async function deletePhoto(id){
   const r = S.media.find(x => x.id === id); if(!r) return;
   if(!confirm('Remove this photo from every family frame?')) return;
-  try{ await B.removePhoto(r); await SSDB.del('sh:' + id).catch(()=>{}); await refresh(); await ssLoad(); openPhotos(); toast('Photo removed'); }
+  try{ await B.removePhoto(r); await SSDB.del('sh:' + id).catch(()=>{}); delete PHOTO_URLS[id]; await refresh(); await ssLoad(); openPhotos(); toast('Photo removed'); }
   catch(e){ toast('⚠️ ' + e.message); }
 }
 
@@ -2864,9 +2933,10 @@ function ssNext(){
     if(pola){ layer.appendChild(frame); polaroidIn(stage, layer, m, url); }
     else if(scrap) scrapIn(stage, layer, m);
     else if(post) postcardIn(stage, layer, m, url);
-    else if(proj) projIn(stage, layer);
+    else if(proj) projIn(stage, layer, m);
     else{
       if(layer.classList.contains('kbl')) kenBurns(stage, layer, m, cfg.secs);
+      else if(m.type !== 'video') lowerThird(layer, m, cfg.secs, false);
       const old = [...stage.children]; stage.appendChild(layer); void layer.offsetWidth; layer.classList.add('in');
       setTimeout(() => old.forEach(ssDrop), layer.classList.contains('kbl') ? 2500 : 1600);
     }
@@ -2908,8 +2978,8 @@ const SS_STYLES = [['classic', '🎞️ Classic fade'], ['polaroid', '📸 Polar
 const POLA_KEEP = 4;                                    // prints left in the pile under the new one
 function polaroidFrame(m){
   const card = document.createElement('div'); card.className = 'pol';
-  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
-  card.innerHTML = `<div class="pic"></div><div class="cap">${who ? `from ${esc(firstName(who.name))} ♥` : ''}</div>`;
+  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by), note = photoNote(m);
+  card.innerHTML = `<div class="pic"></div><div class="cap">${note ? `<span class="ct">${esc(note.text)}</span><small>— ${esc(note.by)}</small>` : who ? `from ${esc(firstName(who.name))} ♥` : ''}</div>`;
   return card;
 }
 function polaroidIn(stage, layer, m, url){
@@ -2963,7 +3033,7 @@ function roughRect(){                                  // a hand-drawn box: wobb
 function scrapItem(m){
   const el = document.createElement('div'); el.className = 'sbi';
   const kind = pickOne(['tape', 'tape', 'torn', 'corners', 'doodle']);
-  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
+  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by), note = photoNote(m);
   const ink = pickOne(SB_INK);
   let deco = '';
   if(kind === 'tape'){ const two = Math.random() < .5;
@@ -2972,7 +3042,7 @@ function scrapItem(m){
   if(kind === 'corners') deco = '<i class="cn tl"></i><i class="cn tr"></i><i class="cn bl"></i><i class="cn br"></i>';
   if(kind === 'doodle') deco = `<svg class="ddl" viewBox="0 0 100 100" preserveAspectRatio="none"><path pathLength="1" d="${roughRect()}" style="stroke:${ink}"/></svg>`;
   if(Math.random() < .35) deco += `<i class="sbst" style="${pickOne(['left:-7%;top:-7%', 'right:-7%;top:-7%', 'right:-6%;bottom:2%', 'left:-6%;bottom:2%'])};rotate:${rnd(-25, 25).toFixed(0)}deg">${pickOne(SB_STICKERS)}</i>`;
-  el.innerHTML = `<div class="paper k-${kind}" data-kind="${kind}" ${kind === 'torn' ? `style="clip-path:${tornEdge()}"` : ''}><div class="pic"></div>${who ? `<div class="cap" style="color:${ink}">from ${esc(firstName(who.name))} ♥</div>` : ''}</div>${deco}`;
+  el.innerHTML = `<div class="paper k-${kind}" data-kind="${kind}" ${kind === 'torn' ? `style="clip-path:${tornEdge()}"` : ''}><div class="pic"></div>${note ? `<div class="cap note" style="color:${ink}"><span class="ct">${esc(note.text)}</span><small>— ${esc(note.by)}</small></div>` : who ? `<div class="cap" style="color:${ink}">from ${esc(firstName(who.name))} ♥</div>` : ''}</div>${deco}`;
   return el;
 }
 function scrapPage(stage){                             // a fresh page under the current one; the old one turns away
@@ -3006,9 +3076,9 @@ function scrapIn(stage, el, m){
   const pic = el.querySelector('.pic'); pic.style.width = pw + 'px'; pic.style.height = ph + 'px';
   const paper = el.querySelector('.paper'), kind = paper.dataset.kind;
   paper.style.padding = kind === 'corners' || kind === 'doodle' ? '0' : `${pad}px ${pad}px ${el.querySelector('.cap') ? 0 : pad}px`;
-  const cap = el.querySelector('.cap'); if(cap){ cap.style.fontSize = Math.max(14, pw * .05) + 'px'; cap.style.height = Math.max(30, pw * .1) + 'px'; }
+  const cap = el.querySelector('.cap'); if(cap){ cap.style.fontSize = Math.max(14, pw * .05) + 'px'; cap.style[cap.classList.contains('note') ? 'minHeight' : 'height'] = Math.max(30, pw * .1) + 'px'; }
   el.style.fontSize = Math.max(22, pw * .13) + 'px';                         // sticker size
-  const slot = SB.slots[SB.used++], fullW = pw + (kind === 'corners' || kind === 'doodle' ? 0 : pad * 2), fullH = ph + pad * 2 + (cap ? pw * .1 : 0);
+  const slot = SB.slots[SB.used++], fullW = pw + (kind === 'corners' || kind === 'doodle' ? 0 : pad * 2), fullH = ph + pad * 2 + (cap ? cap.offsetHeight || pw * .1 : 0);
   const sc = Math.min(slot.w * .86 / fullW, slot.h * .86 / fullH);
   el.style.left = slot.x + 'px'; el.style.top = slot.y + 'px';
   const hero = `translate(-50%,-50%) translate(${W / 2 - slot.x}px, ${H / 2 - slot.y + H * .03}px) rotate(0deg) scale(1)`;
@@ -3055,8 +3125,9 @@ function postcardItem(m){
   const el = document.createElement('div'); el.className = 'pc';
   const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
   const fam = S.family?.name || 'Our family';
-  const notes = postcardNotes().filter(n => n.text !== PC.last);
-  const note = notes.length && Math.random() < .75 ? pickOne(notes) : { text: pickOne(PC_GENERIC), stamp: pickOne(PC_STAMPS) };
+  const notes = postcardNotes().filter(n => n.text !== PC.last), said = photoNote(m);    // a family comment on the photo comes first
+  const note = said ? { text: said.text, stamp: pickOne(PC_STAMPS), by: said.by }
+    : notes.length && Math.random() < .75 ? pickOne(notes) : { text: pickOne(PC_GENERIC), stamp: pickOne(PC_STAMPS) };
   PC.last = note.text;
   const ink = pickOne(PC_INKS), now = new Date();
   const mon = now.toLocaleDateString('en-US', { month:'short' }).toUpperCase(), day = now.getDate(), yr = now.getFullYear();
@@ -3065,7 +3136,7 @@ function postcardItem(m){
     <div class="face front"><div class="pic"></div></div>
     <div class="face back">
       <div class="pchead">POST CARD</div>
-      <div class="pcmsg" style="color:${ink}">${esc(note.text)}<div class="pcsig">— Love, ${esc(who ? firstName(who.name) : fam)}</div></div>
+      <div class="pcmsg" style="color:${ink}">${esc(note.text)}<div class="pcsig">— Love, ${esc(note.by || (who ? firstName(who.name) : fam))}</div></div>
       <div class="pcdiv"></div>
       <div class="pcright">
         <div class="pcstamp"><div class="pci" style="--s:${pickOne(['#f6d5c3', '#d7e8f5', '#e3f0d8', '#f7e7b4', '#ead9f2'])}"><span>${esc(note.stamp || pickOne(PC_STAMPS))}</span><small>FAMILY POST</small></div></div>
@@ -3131,7 +3202,7 @@ function projRoom(stage){
   let room = stage.querySelector('.proj'); if(room) return room;
   [...stage.children].forEach(ssDrop);
   room = document.createElement('div'); room.className = 'proj';
-  room.innerHTML = '<div class="pscreen"><div class="pshut"></div><canvas class="pdust"></canvas></div>';
+  room.innerHTML = '<div class="pscreen"><div class="pshut"></div><canvas class="pdust"></canvas></div><div class="pjcap"></div>';
   stage.appendChild(room);
   const cv = room.querySelector('.pdust'), cx = cv.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let last = 0, hair = null;
@@ -3152,8 +3223,11 @@ function projRoom(stage){
   requestAnimationFrame(tick);
   return room;
 }
-function projIn(stage, el){
+function projIn(stage, el, m){
   const room = projRoom(stage), scr = room.querySelector('.pscreen'), shut = room.querySelector('.pshut');
+  const pc = room.querySelector('.pjcap'), note = photoNote(m);     // a family comment, typed on a label under the screen
+  pc.classList.remove('on');
+  setTimeout(() => { pc.innerHTML = note ? `${esc(note.text)} <small>— ${esc(note.by)}</small>` : ''; if(note) pc.classList.add('on'); }, 900);
   const W = stage.clientWidth, H = stage.clientHeight;
   const media = el.querySelector('img,video'), nw = media.naturalWidth || media.videoWidth || 3, nh = media.naturalHeight || media.videoHeight || 2;
   const k = Math.min(W * .84 / nw, H * .8 / nh), sw = Math.round(nw * k), sh = Math.round(nh * k);
@@ -3197,14 +3271,16 @@ function kenBurns(stage, layer, m, secs){
   };
   if(matchMedia('(prefers-reduced-motion: reduce)').matches){ img.style.transform = at(1, { x:.5, y:.45 }); }
   else img.animate([{ transform:at(z1, f1) }, { transform:at(z2, f2) }], { duration:(secs + 3.5) * 1000, easing:'cubic-bezier(.35,.1,.65,.9)', fill:'forwards' });
-  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
-  if(who){
-    const when = new Date(row.added_at || m.added || Date.now()).toLocaleDateString(undefined, { month:'long', year:'numeric' });
-    const cap = document.createElement('div'); cap.className = 'kbcap';
-    cap.innerHTML = `<b>from ${esc(firstName(who.name))}</b><small>${esc(when)}</small>`;
-    cap.style.animationDelay = `1.4s, ${Math.max(3, secs - 1.6)}s`;
-    layer.appendChild(cap);
-  }
+  lowerThird(layer, m, secs, true);
+}
+function lowerThird(layer, m, secs, uploaderToo){       // documentary caption: a family comment, or (Ken Burns) who added it
+  const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by), note = photoNote(m);
+  if(!note && !(uploaderToo && who)) return;
+  const when = new Date(row?.added_at || m.added || Date.now()).toLocaleDateString(undefined, { month:'long', year:'numeric' });
+  const cap = document.createElement('div'); cap.className = 'kbcap' + (note ? ' note' : '');
+  cap.innerHTML = note ? `<b>“${esc(note.text)}”</b><small>${esc(note.by)} · ${esc(when)}</small>` : `<b>from ${esc(firstName(who.name))}</b><small>${esc(when)}</small>`;
+  cap.style.animationDelay = `1.4s, ${Math.max(3, secs - 1.6)}s`;
+  layer.appendChild(cap);
 }
 
 /* ---------- Start / stop / idle ---------- */
