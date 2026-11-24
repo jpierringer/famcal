@@ -803,6 +803,7 @@ main{padding:4px 16px 20px}
 .albums{display:flex;gap:6px;overflow-x:auto;margin:6px 0 4px;padding-bottom:2px}
 .albums .pill{flex:none}
 .albums .pill.on{background:color-mix(in srgb,var(--c) 20%,var(--card));box-shadow:inset 0 0 0 1.5px var(--c)}
+.nickrow{display:flex;gap:8px;align-items:center}.nickrow .field{flex:1;margin:0}
 .caltag{font-size:12px;font-weight:700;color:color-mix(in srgb,var(--c) 70%,var(--ink,#222));background:color-mix(in srgb,var(--c) 14%,transparent);padding:1px 7px;border-radius:999px;white-space:nowrap}
 .feattag{display:inline-block;margin:-2px 0 6px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#f5b301 22%,var(--soft));font-size:12px;font-weight:800;letter-spacing:.02em}
 .sfeat{margin:14px 0 4px}
@@ -1046,7 +1047,8 @@ function firstEmoji(str){
   return parts.find(g => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(g)) || null;
 }
 const cleanWords = str => [...new Set((str||'').split(/[,\n]/).map(w => w.trim().toLowerCase()).filter(w => w && w.length <= 30))].slice(0, 10);
-const firstName = n => (n||'').split(' ')[0];
+const NICKS = new Set();                          // names people chose for a calendar ("Sister Smith") are shown whole
+const firstName = n => NICKS.has(n) ? n : (n||'').split(' ')[0];
 const avatar = (m, cls='') => m ? `<span class="av ${cls}" style="--c:${esc(m.color)}">${esc(m.emoji)}</span>` : '';
 
 /* ========================= Quick-add parser =========================
@@ -1192,7 +1194,8 @@ function parseQuick(raw, opts={}){
   h = h.replace(/@([A-Za-z][\w'’-]*)/g, (m, n) => {
     const low = n.toLowerCase();
     if(/^(all|everyone|everybody|family|fam)$/.test(low)){ pool.forEach(x => r.people.includes(x.id) || r.people.push(x.id)); (r.tags = r.tags || []).push({tok:m, color:'#a855f7'}); return ' '; }
-    const mm = pool.find(x => firstName(x.name).toLowerCase() === low) || pool.find(x => x.name.toLowerCase().startsWith(low));
+    const mm = pool.find(x => firstName(x.name).toLowerCase() === low) || pool.find(x => x.name.toLowerCase().startsWith(low))
+      || pool.find(x => x.realName && (firstName(x.realName).toLowerCase() === low || x.realName.toLowerCase().startsWith(low)));
     if(mm){ if(!r.people.includes(mm.id)) r.people.push(mm.id); (r.tags = r.tags || []).push({tok:m, color:mm.color}); return ' '; }
     return m;
   });
@@ -1215,6 +1218,17 @@ function parseQuick(raw, opts={}){
 const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, cals:[], cm:[], evAll:[], members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false, media:[], mediaMissing:true, photoNotes:[] };
 let B; // backend
 const member = id => (S.allMembers || S.members).find(m => m.id === id);
+// A person as they appear on one calendar: their nickname there ("Bishop") or their usual name
+function memberIn(id, calId){
+  const m = member(id); if(!m) return m;
+  const nick = calId && S.cm.find(r => r.family_id === calId && r.member_id === id)?.nickname;
+  return nick ? { ...m, name:nick, realName:m.name } : m;
+}
+// For places with no single calendar (people chips): the nickname if that's the only way you know them
+function shownName(m){
+  const rows = S.cm.filter(r => r.member_id === m.id && !r.removed_at && calShown(r.family_id));
+  return rows.length && rows.every(r => r.nickname) ? rows[0].nickname : m.name;
+}
 
 /* ========================= Calendars =========================
    Everyone has one identity and can be on several calendars (Family, Church, Pickleball…). On each calendar they're a
@@ -1234,7 +1248,7 @@ const multiCal = () => S.cals.length > 1;
 const cmRow = (calId, mid) => S.cm.find(r => r.family_id === calId && r.member_id === mid);
 function calPeople(id, withRemoved){                     // people on a calendar, each with their membership as ._cm
   return S.cm.filter(r => r.family_id === id && (withRemoved || !r.removed_at))
-    .map(r => { const m = member(r.member_id); return m ? { ...m, _cm:r } : null; }).filter(Boolean);
+    .map(r => { const m = member(r.member_id); return m ? { ...m, ...(r.nickname ? { name:r.nickname, realName:m.name } : {}), _cm:r } : null; }).filter(Boolean);
 }
 const contributorsOf = id => calPeople(id).filter(m => m._cm.role === 'contributor');
 const isAdmin = (m, calId) => !!(m && (m._cm ? m._cm.is_admin : cmRow(calId, m.id)?.is_admin));
@@ -1274,7 +1288,7 @@ async function setFeatured(id, on){
 const asksRsvp = ev => ev.kind === 'invite' || (ev.kind === 'private' && (ev.invitees || []).length > 0);
 function busyNames(ev){
   const ids = [ev.owner_id, ...(ev.invitees || [])].filter((x,i,a) => a.indexOf(x) === i);
-  const names = ids.map(id => firstName(member(id)?.name)).filter(Boolean);
+  const names = ids.map(id => firstName(memberIn(id, ev.family_id)?.name)).filter(Boolean);
   return { ids, text: names.length <= 1 ? `${names[0] || 'Someone'} is busy` : `${names.slice(0,-1).join(', ')} & ${names.at(-1)} are busy` };
 }
 const myRsvp = ev => S.rsvps.find(r => r.event_id===ev.id && r.member_id===S.me.id)?.status;
@@ -1383,7 +1397,7 @@ function LocalBackend(){
       cals:[{id:'f1', name:'Our Family', code:'DEMO42', emoji:'🏡', color:'#ff6b4a', allow_join:true, featured_list:null},
             {id:'f2', name:'Youth', code:'YOUTH7', emoji:'🙌', color:'#6366f1', allow_join:true, featured_list:null}],
       cm:[...['m1','m2','m3','m4'].map((id, i) => ({family_id:'f1', member_id:id, role:'contributor', is_admin:i === 0, color:null, shown:true, removed_at:null})),
-          {family_id:'f2', member_id:'m1', role:'contributor', is_admin:true, color:null, shown:true, removed_at:null},
+          {family_id:'f2', member_id:'m1', role:'contributor', is_admin:true, color:null, shown:true, removed_at:null, nickname:'Bishop'},
           {family_id:'f2', member_id:'m5', role:'contributor', is_admin:false, color:null, shown:true, removed_at:null},
           {family_id:'f2', member_id:'m3', role:'viewer', is_admin:false, color:null, shown:true, removed_at:null}],
       events:[g, pack, soccer, date, bday, trip,
@@ -1631,6 +1645,7 @@ async function refresh(){
   Object.assign(S, { cals:d.cals || [], cm:d.cm || [], allMembers:d.members, evAll:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
     custom:(d.custom||[]).map(c => ({...c, words:(c.keywords||'').split(',').map(w => w.trim()).filter(Boolean)})), customMissing:!!d.customMissing,
     media:d.media || [], mediaMissing: !d.media, photoNotes:d.photoNotes || [] });
+  NICKS.clear(); S.cm.forEach(r => r.nickname && NICKS.add(r.nickname));
   S.me = (S.allMembers || []).find(m => m.id === d.meId);
   if(!S.me) throw new Error('not-member');
   S.family = S.cals[0] || null;                          // older single-calendar code paths
@@ -1724,7 +1739,7 @@ function renderTop(){
   $('#filters').innerHTML = (multiCal() ? S.cals.map(c =>                  // calendars first: tap to show / hide
     `<button class="fchip calchip ${c.shown !== false ? 'shown' : ''}" style="--c:${esc(calColor(c.id))}" data-calchip="${c.id}" aria-pressed="${c.shown !== false}"><i class="cdot"></i>${esc(c.emoji || '📅')} ${esc(c.name)}</button>`).join('') + '<span class="fsep"></span>' : '')
     + (S.members.length > 1 ? S.members.map(m =>
-    `<button class="fchip ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m)}${esc(firstName(m.name))}</button>`).join('') : '');
+    `<button class="fchip ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m)}${esc(firstName(shownName(m)))}</button>`).join('') : '');
   $('#addBtn').classList.toggle('hidden', !writableCals().length);
 }
 
@@ -2078,7 +2093,7 @@ function openDetail(id, quiet, occ){
   const ev = ev0.repeat && occ ? { ...ev0, starts_on:occ, _occ:occ } : ev0;
   const v = view(ev); if(hidden(v)) return;
   S.openId = id;
-  const o = member(v.owner_id) || {}, mine = v.owner_id === S.me.id;
+  const o = memberIn(v.owner_id, v.family_id) || {}, mine = v.owner_id === S.me.id;
   const myR = new Set(S.reactions.filter(r => r.event_id===id && r.member_id===S.me.id).map(r => r.sticker));
   let h = v.sticker ? `<span class="bigsticker">${esc(v.sticker)}</span>` : '';
   h += `<span class="kindtag">${KINDS.find(k=>k.k===v.kind).ic} ${KINDS.find(k=>k.k===v.kind).name}</span><h3 style="margin-top:8px">${esc(v.title)}</h3>`;
@@ -2095,7 +2110,7 @@ function openDetail(id, quiet, occ){
   h += `<div class="drow"><span class="ic">${avatar(o,'sm')}</span><span>Added by ${esc(mine ? 'you' : o.name)}</span></div>`;
   if(multiCal()) h += `<div class="drow"><span class="ic" style="color:${esc(evColor(v))}">●</span><span>${esc(calEmoji(v.family_id))} ${esc(calName(v.family_id))}</span></div>`;
   if(v.invitees?.length){
-    h += `<div class="drow" style="flex-wrap:wrap"><span class="ic">👥</span>${v.invitees.map(mid => { const m = member(mid); if(!m) return ''; const r = asksRsvp(v) ? rsvpOf(v, mid) : null;
+    h += `<div class="drow" style="flex-wrap:wrap"><span class="ic">👥</span>${v.invitees.map(mid => { const m = memberIn(mid, v.family_id); if(!m) return ''; const r = asksRsvp(v) ? rsvpOf(v, mid) : null;
       return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px">${avatar(m,'sm')}${esc(firstName(m.name))}${r==='yes'?' ✅':r==='no'?' ❌':asksRsvp(v)?' ⏳':''}</span>`; }).join('')}</div>`;
   }
   if(v.notes) h += `<div class="drow"><span class="ic">📝</span><span style="white-space:pre-wrap">${esc(v.notes)}</span></div>`;
@@ -2148,7 +2163,7 @@ function openComposerNow(opts = {}){
   if(S.tab === 'lists' && !ev && !opts.text) { C.kind = 'list'; C.kindManual = true; }
   let text = opts.text || '';
   if(ev){
-    const ppl = (ev.invitees||[]).map(id => '@' + firstName(member(id)?.name)).filter(x => x !== '@').join(' ');
+    const ppl = (ev.invitees||[]).map(id => '@' + firstName(memberIn(id, ev.family_id)?.name)).filter(x => x !== '@').join(' ');
     text = [ev.title, ppl, ev.place ? '#' + ev.place : ''].filter(Boolean).join(' ');
   }
   $('#cText').value = text; C.origDT = ev ? parseQuick(text) : null; C.whenOpen = false; C.kindMenu = false; C.hlSeen = new Set(); C.liveLast = undefined;
@@ -2236,7 +2251,7 @@ function updateComposer(){
   if(d.kind === 'list') p += `<button class="p ${d.isPrivate ? 'cdp' : 'off'}" id="cListPriv">🔒 ${d.isPrivate ? 'Private list' : 'Private'}</button>`;
   if(d.date && !d.rep) p += `<button class="p ${d.countdown ? 'cdp' : 'off'}" id="cCountdown">⏳ ${d.countdown ? (daysUntil(d.date) >= 0 ? cdShort(daysUntil(d.date)) + ' to go' : 'Countdown') : 'Countdown'}</button>`;
   if(d.place) p += `<span class="p">📍 ${esc(d.place)}</span>`;
-  if(d.people.length) p += `<span class="p">${d.people.map(id => avatar(member(id),'sm')).join('')} ${d.people.length===contributorsOf(d.cal).length && d.people.length > 1 ? 'Everyone' : d.people.map(id => esc(firstName(member(id)?.name))).join(', ')}</span>`;
+  if(d.people.length) p += `<span class="p">${d.people.map(id => avatar(member(id),'sm')).join('')} ${d.people.length===contributorsOf(d.cal).length && d.people.length > 1 ? 'Everyone' : d.people.map(id => esc(firstName(memberIn(id, d.cal)?.name))).join(', ')}</span>`;
   $('#cPills').innerHTML = p;
   // quick dates
   const t = todayStr(); const q = [[t,'Today'],[addDays(t,1),'Tmrw']];
@@ -2246,7 +2261,7 @@ function updateComposer(){
   // private + items
   $('#cPriv').classList.toggle('hidden', !(d.kind === 'private' || d.isPrivate));
   $('#cPriv').innerHTML = d.isPrivate
-    ? `🔒 Only you${d.people.length ? ' and ' + d.people.map(id => esc(firstName(member(id)?.name))).join(', ') : ''} can see this list. <b>@tag</b> people to share it with them.`
+    ? `🔒 Only you${d.people.length ? ' and ' + d.people.map(id => esc(firstName(memberIn(id, d.cal)?.name))).join(', ') : ''} can see this list. <b>@tag</b> people to share it with them.`
     : '🔒 Everyone else just sees <b>Busy</b>. Only you and anyone you <b>@tag</b> can see what it is.';
   $('#cItemsWrap').classList.toggle('hidden', d.kind !== 'list');
   $('#cItemsLbl').textContent = C.editing ? 'Add more items' : (d.items.length ? `Items (${d.items.length})` : 'Items');
@@ -2377,7 +2392,7 @@ const KIND_LINE = {
 };
 function kindReason(d){
   const pool = contributorsOf(d.cal), names = d.people.length === pool.length && pool.length > 1 ? 'everyone'
-    : d.people.map(id => firstName(member(id)?.name)).filter(Boolean).join(' & ');
+    : d.people.map(id => firstName(memberIn(id, d.cal)?.name)).filter(Boolean).join(' & ');
   if(d.kind === 'invite') return names ? `because you tagged ${names}` : 'tag who’s invited with @';
   if(d.kind === 'list') return C.kindManual ? (d.isPrivate ? 'only people you @tag can see it' : 'put items after a “:” or below') : 'because you listed items after a “:”';
   if(d.kind === 'private') return names ? `only you${d.people.length > 1 ? ',' : ' and'} ${names} can see what it is` : 'only you can see what it is';
@@ -2669,13 +2684,16 @@ function openCalSheet(id){
     <h3 class="sheeth" style="margin-top:10px"><span style="color:${esc(calColor(id))}">●</span> ${esc(c.emoji || '📅')} ${esc(c.name)}</h3>
     <div class="hint" style="margin:0 2px 10px">${role}</div>
     <label class="ssrow"><span>Show on my calendar</span><input type="checkbox" data-calshown="${id}" ${c.shown !== false ? 'checked' : ''}></label>
+    <div class="lbl">Your name on this calendar</div>
+    <div class="nickrow"><input class="field" id="nickIn" maxlength="30" placeholder="${esc(S.me.name)}" value="${esc(cmRow(id, S.me.id)?.nickname || '')}" autocomplete="off" enterkeyhint="done" data-nickcal="${id}"><button class="pill" data-nicksave="${id}">Save</button></div>
+    <div class="hint" style="margin:4px 2px 10px">What people on ${esc(c.name)} see — like <b>Bishop</b>, <b>Coach</b> or <b>Sister Smith</b>. They can @tag you by it. Leave empty to use <b>${esc(S.me.name)}</b>.</div>
     <div class="lbl">Its color for you</div>
     <div class="colors">${CAL_COLORS.map(x => `<button class="${x === calColor(id) ? 'on' : ''}" style="--c:${x}" data-calcolor="${x}" data-cal="${id}"></button>`).join('')}</div>`;
   if(c.code) h += `<div class="lbl">Invite code</div>
     <div class="codebox"><b>${esc(c.code)}</b><button class="pill" data-sharecode="${id}">Share</button></div>
     <div class="hint" style="margin:6px 2px 0">${c.allow_join === false ? 'People already on it use this code to sign in on a new phone. New people can’t join with it right now; an admin adds them.' : 'People on it use this code to sign in on a new phone, and new people can use it to join and add things.'}</div>`;
   h += `<div class="lbl">People</div>
-    ${people.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}</b>${m._cm.is_admin ? '<span class="kindtag">Admin</span>' : ''}${m._cm.role === 'viewer' ? '<span class="kindtag">👀 Viewer</span>' : ''}${m.id === S.me.id ? '<span class="kindtag">You</span>' : ''}</div>`).join('')}`;
+    ${people.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}${m.realName ? ` <small class="hint">${esc(m.realName)}</small>` : ''}</b>${m._cm.is_admin ? '<span class="kindtag">Admin</span>' : ''}${m._cm.role === 'viewer' ? '<span class="kindtag">👀 Viewer</span>' : ''}${m.id === S.me.id ? '<span class="kindtag">You</span>' : ''}</div>`).join('')}`;
   if(c.role === 'contributor') h += `<div class="lbl">🔒 Admin</div>
     <div class="admincard"><div><b>People, viewer links &amp; code</b><div class="hint" style="margin:2px 0 0">Needs an admin’s PIN${ad.length ? ` (${ad.map(m => esc(firstName(m.name))).join(', ')})` : ''}.</div></div>
       <button class="btn" data-admin="${id}">${adminOpen(id) ? '🔓 Open' : 'Unlock'}</button></div>`;
@@ -2704,6 +2722,15 @@ function openJoinCal(err){
   $('#sheet').dataset.panel = 'joincal';
   setTimeout(() => $('#jcCode')?.focus(), 80);
 }
+async function saveNick(id){
+  const v = ($('#nickIn')?.value || '').trim().slice(0, 30), r = cmRow(id, S.me.id);
+  const nick = v && v !== S.me.name ? v : null;
+  if(r) r.nickname = nick; NICKS.clear(); S.cm.forEach(x => x.nickname && NICKS.add(x.nickname)); render();
+  try{ await B.setCalPrefs(id, { nickname:nick }); toast(nick ? `👋 You’re ${nick} on ${calName(id)}` : `You’re ${S.me.name} on ${calName(id)}`); }
+  catch(e){ toast('⚠️ ' + e.message); }
+  refresh().then(() => $('#sheet').dataset.panel === 'cal' && openCalSheet(id)).catch(()=>{});
+}
+document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.dataset && e.target.dataset.nickcal){ e.preventDefault(); saveNick(e.target.dataset.nickcal); } });
 async function setCalPrefs(id, p){
   const c = cal(id); Object.assign(c, p.shown !== undefined ? { shown:p.shown } : {}, p.color !== undefined ? { my_color:p.color } : {});
   applyView(); render();
@@ -2711,8 +2738,9 @@ async function setCalPrefs(id, p){
   refresh().catch(()=>{});
 }
 document.addEventListener('click', async e => {
-  const t = e.target.closest && e.target.closest('[data-calsheet],[data-calcolor],[data-newcal],[data-joincal],[data-ncemoji],[data-nccolor],[data-ncsave],[data-jcgo],[data-leavecal],[data-sharecode],[data-calchip]'); if(!t) return;
+  const t = e.target.closest && e.target.closest('[data-nicksave],[data-calsheet],[data-calcolor],[data-newcal],[data-joincal],[data-ncemoji],[data-nccolor],[data-ncsave],[data-jcgo],[data-leavecal],[data-sharecode],[data-calchip]'); if(!t) return;
   const d = t.dataset;
+  if(d.nicksave) return saveNick(d.nicksave);
   if(d.calsheet) openCalSheet(d.calsheet);
   else if(d.calcolor){ await setCalPrefs(d.cal, { color:d.calcolor }); openCalSheet(d.cal); }
   else if(d.newcal !== undefined){ S.newCal = null; openNewCal(); }
@@ -3386,7 +3414,7 @@ let PHOTO_URLS = {};
 const photoComments = id => (S.photoNotes || []).filter(c => c.media_id === id);
 function photoNote(m){                               // one comment to show with this photo on the frame (a different one each time)
   const cs = m && m.mid ? photoComments(m.mid) : []; if(!cs.length) return null;
-  const c = pickOne(cs), a = member(c.author_id);
+  const c = pickOne(cs), a = memberIn(c.author_id, c.family_id);
   return { text:c.body, by:a ? firstName(a.name) : '' };
 }
 async function openPhoto(id, keepTyping){
@@ -3997,7 +4025,7 @@ async function ssInit(force){
    for a minute, the screensaver starts, or they tap the ✏️ chip; then it goes back to the screen's own sign-in.
    Switching uses the same claim_member PIN check as signing in, so nobody can write as someone else without their PIN. */
 const PEN = { who:null, next:null, timer:null, pickT:null, idleMs:60000 };
-const penTag = () => PEN.who && member(PEN.who) ? ' · ✏️ ' + firstName(member(PEN.who).name) : '';
+const penTag = () => PEN.who && member(PEN.who) ? ' · ✏️ ' + firstName(memberIn(PEN.who, dispCal()).name) : '';
 function penRender(){
   const b = $('#penChip'); if(!b) return;
   const m = PEN.who && member(PEN.who);
