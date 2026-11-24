@@ -806,6 +806,7 @@ main{padding:4px 16px 20px}
 .sbname{text-align:left;padding:7px 4px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nocal{text-align:center;padding:40px 18px}
 .nocal .big{font-size:54px;display:block;margin-bottom:6px}
+.ssrow.dcal .cdot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block;margin-right:2px}
 .albums{display:flex;gap:6px;overflow-x:auto;margin:6px 0 4px;padding-bottom:2px}
 .albums .pill{flex:none}
 .albums .pill.on{background:color-mix(in srgb,var(--c) 20%,var(--card));box-shadow:inset 0 0 0 1.5px var(--c)}
@@ -1258,7 +1259,8 @@ const calName = id => cal(id)?.name || 'Calendar';
 const calEmoji = id => cal(id)?.emoji || '📅';
 const canWrite = id => cal(id)?.role === 'contributor';
 const writableCals = () => S.cals.filter(c => c.role === 'contributor');
-const calShown = id => cal(id)?.shown !== false;
+const calShown = id => isDisplay() ? dispCals().includes(id) : cal(id)?.shown !== false;
+function isDisplay(){ try{ return !!ssCfg().display; }catch(e){ return false; } }   // this device is a shared screen
 const evColor = v => calColor(v && v.family_id);
 const multiCal = () => S.cals.length > 1;
 const cmRow = (calId, mid) => S.cm.find(r => r.family_id === calId && r.member_id === mid);
@@ -1270,7 +1272,7 @@ const contributorsOf = id => calPeople(id).filter(m => m._cm.role === 'contribut
 const isAdmin = (m, calId) => !!(m && (m._cm ? m._cm.is_admin : cmRow(calId, m.id)?.is_admin));
 const admins = calId => calPeople(calId).filter(m => m._cm.is_admin);
 // Shown calendars, plus anything you were @tagged on even if its calendar is hidden
-const inView = e => calShown(e.family_id) || (e.invitees || []).includes(S.me?.id);
+const inView = e => calShown(e.family_id) || (!isDisplay() && (e.invitees || []).includes(S.me?.id));   // a shared screen isn't a person
 function applyView(){
   S.events = S.evAll.filter(inView);
   const ids = new Set(S.cm.filter(r => !r.removed_at && calShown(r.family_id)).map(r => r.member_id));
@@ -1279,7 +1281,7 @@ function applyView(){
 }
 function defaultCal(){                                    // where new things go unless you pick another calendar
   const w = writableCals(); let last = null; try{ last = localStorage.getItem('famcal-lastcal'); }catch(e){}
-  return (w.find(c => c.id === last) || w.find(c => c.shown !== false) || w[0] || {}).id || null;
+  return (w.find(c => c.id === last) || w.find(c => calShown(c.id)) || w[0] || {}).id || null;
 }
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
 const isSecret = ev => ev.kind === 'private' || !!ev.is_private;
@@ -1723,7 +1725,7 @@ function renderSide(){
     ${S.tab === 'cal' ? featuredLists().map(e => `<div class="sfeat">${featuredCard(10, e)}</div>`).join('') : ''}
     ${(() => { const cds = countdowns(); return cds.length ? `<div class="shd">Countdowns</div>${cds.slice(0,6).map(e => { const n = daysUntil(e.starts_on);
       return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'⏳')}</span><span class="grow">${esc(e.title)}</span><b class="sbcd" style="--c:${esc(evColor(e))}">${n === 0 ? '🎉' : n + 'd'}</b></button>`; }).join('')}` : ''; })()}
-    ${multiCal() ? `<div class="shd">Calendars</div>${S.cals.map(c => `<div class="sbrow calside" style="--c:${esc(calColor(c.id))}"><button class="sbtog ${c.shown !== false ? 'shown' : ''}" data-calchip="${c.id}" aria-pressed="${c.shown !== false}" title="Show / hide"><i class="cdot"></i></button><button class="grow sbname" data-calsheet="${c.id}">${esc(c.emoji || '📅')} ${esc(c.name)}${c.role === 'viewer' ? ' <small>👀</small>' : ''}</button></div>`).join('')}` : ''}
+    ${multiCal() ? `<div class="shd">Calendars</div>${S.cals.map(c => `<div class="sbrow calside" style="--c:${esc(calColor(c.id))}"><button class="sbtog ${calShown(c.id) ? 'shown' : ''}" data-calchip="${c.id}" aria-pressed="${c.shown !== false}" title="Show / hide"><i class="cdot"></i></button><button class="grow sbname" data-calsheet="${c.id}">${esc(c.emoji || '📅')} ${esc(c.name)}${c.role === 'viewer' ? ' <small>👀</small>' : ''}</button></div>`).join('')}` : ''}
     ${S.members.length > 1 ? `<div class="shd">People${S.filter.size ? '<span class="spacer"></span><button data-clearfilter style="width:auto;padding:0 6px;font-size:12px;color:var(--accent)">Show all</button>' : ''}</div>
       ${S.members.map(m => `<button class="sbrow ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m,'sm')}<span class="grow">${esc(m.name)}${m.id===S.me.id?' <small>(you)</small>':''}</span></button>`).join('')}` : ''}
     ${lists.length ? `<div class="shd">Lists</div>${lists.slice(0,8).map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
@@ -1753,7 +1755,7 @@ function renderTop(){
   $('#week').innerHTML = w;
   $('#week').classList.toggle('hidden', S.tab !== 'cal');
   $('#filters').innerHTML = (multiCal() ? S.cals.map(c =>                  // calendars first: tap to show / hide
-    `<button class="fchip calchip ${c.shown !== false ? 'shown' : ''}" style="--c:${esc(calColor(c.id))}" data-calchip="${c.id}" aria-pressed="${c.shown !== false}"><i class="cdot"></i>${esc(c.emoji || '📅')} ${esc(c.name)}</button>`).join('') + '<span class="fsep"></span>' : '')
+    `<button class="fchip calchip ${calShown(c.id) ? 'shown' : ''}" style="--c:${esc(calColor(c.id))}" data-calchip="${c.id}" aria-pressed="${calShown(c.id)}"><i class="cdot"></i>${esc(c.emoji || '📅')} ${esc(c.name)}</button>`).join('') + '<span class="fsep"></span>' : '')
     + (S.members.length > 1 ? S.members.map(m =>
     `<button class="fchip ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m)}${esc(firstName(shownName(m)))}</button>`).join('') : '');
   $('#addBtn').classList.toggle('hidden', !writableCals().length);
@@ -2688,7 +2690,7 @@ function openMe(){                              // the avatar button: just you (
 function calRow(c){                                     // one calendar in Settings: tap to open, switch to show / hide
   const badge = c.is_admin ? 'Admin' : c.role === 'viewer' ? '👀 View only' : '';
   return `<div class="calrow" style="--c:${esc(calColor(c.id))}"><button class="calopen" data-calsheet="${c.id}"><i class="cdot"></i><span class="ce">${esc(c.emoji || '📅')}</span><b>${esc(c.name)}</b>${badge ? `<span class="kindtag">${badge}</span>` : ''}<span class="chev">›</span></button>
-    <label class="sw2" title="Show on my calendar"><input type="checkbox" data-calshown="${c.id}" ${c.shown !== false ? 'checked' : ''}><i></i></label></div>`;
+    <label class="sw2" title="${isDisplay() ? 'Show on this screen' : 'Show on my calendar'}"><input type="checkbox" data-calshown="${c.id}" ${calShown(c.id) ? 'checked' : ''}><i></i></label></div>`;
 }
 function openSettings(){                        // the ⚙️ button: your calendars, this device, stickers
   let h = `<h3 class="sheeth">⚙️ Settings</h3>
@@ -2718,7 +2720,7 @@ function openCalSheet(id){
   let h = `<button class="pill" data-settings>‹ Settings</button>
     <h3 class="sheeth" style="margin-top:10px"><span style="color:${esc(calColor(id))}">●</span> ${esc(c.emoji || '📅')} ${esc(c.name)}</h3>
     <div class="hint" style="margin:0 2px 10px">${role}</div>
-    <label class="ssrow"><span>Show on my calendar</span><input type="checkbox" data-calshown="${id}" ${c.shown !== false ? 'checked' : ''}></label>
+    <label class="ssrow"><span>${isDisplay() ? 'Show on this screen' : 'Show on my calendar'}</span><input type="checkbox" data-calshown="${id}" ${calShown(id) ? 'checked' : ''}></label>
     <div class="lbl">Your name on this calendar</div>
     <div class="nickrow"><input class="field" id="nickIn" maxlength="30" placeholder="${esc(S.me.name)}" value="${esc(cmRow(id, S.me.id)?.nickname || '')}" autocomplete="off" enterkeyhint="done" data-nickcal="${id}"><button class="pill" data-nicksave="${id}">Save</button></div>
     <div class="hint" style="margin:4px 2px 10px">What people on ${esc(c.name)} see — like <b>Bishop</b>, <b>Coach</b> or <b>Sister Smith</b>. They can @tag you by it. Leave empty to use <b>${esc(S.me.name)}</b>.</div>
@@ -2767,6 +2769,7 @@ async function saveNick(id){
 }
 document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.dataset && e.target.dataset.nickcal){ e.preventDefault(); saveNick(e.target.dataset.nickcal); } });
 async function setCalPrefs(id, p){
+  if(p.shown !== undefined && isDisplay()){ setDispCal(id, p.shown); return; }      // a shared screen keeps its own list
   const c = cal(id); Object.assign(c, p.shown !== undefined ? { shown:p.shown } : {}, p.color !== undefined ? { my_color:p.color } : {});
   applyView(); render();
   try{ await B.setCalPrefs(id, p); }catch(e){ toast('⚠️ ' + e.message); }
@@ -3376,7 +3379,7 @@ async function photosAdd(files){
   const calId = photoCalDefault();
   if(!canWrite(calId)) return toast(`👀 You can view ${calName(calId)}’s photos but not add to them`);
   let added = 0, dup = 0, bad = 0, stopped = '', lastErr = '';
-  const known = new Set(album(calId).map(m => m.sha256)), cacheHere = ssOn() && calId === dispCal();
+  const known = new Set(album(calId).map(m => m.sha256)), cacheHere = ssOn() && dispCals().includes(calId);
   for(const [i, f] of imgs.entries()){
     if(album(calId).length + added >= photoCap(calId)){ stopped = `${calName(calId)} has reached ${photoCap(calId)} shared photos. Remove some to add more.`; break; }
     toast(`${isHeic(f) ? 'Converting' : 'Uploading'} ${i + 1} of ${imgs.length}…`);
@@ -3402,7 +3405,7 @@ async function photoSync(){                  // make this display's photo store 
   if(PSYNC.busy){ PSYNC.again = true; return; }
   PSYNC.busy = true;
   try{
-    const mine = album(dispCal()), local = await SSDB.all(), want = new Set(mine.map(r => r.id));     // this screen plays one calendar's album
+    const ids = dispCals(), mine = S.media.filter(r => ids.includes(r.family_id)), local = await SSDB.all(), want = new Set(mine.map(r => r.id));     // this screen plays its calendars' albums
     let changed = false;
     for(const m of local) if(m.mid && !want.has(m.mid)){ await SSDB.del(m.id); changed = true; }      // removed by someone in the family
     const have = new Set(local.filter(m => m.mid).map(m => m.mid));
@@ -3433,7 +3436,7 @@ async function openPhotos(calId){            // see a calendar's album; add and 
   const here = ssOn() ? SS.media.filter(m => m.mid).length : null;
   openSheet(`<h3 class="sheeth">🖼️ Photos</h3>
     ${multiCal() ? `<div class="albums">${S.cals.map(c => `<button class="pill ${c.id === calId ? 'on' : ''}" style="--c:${esc(calColor(c.id))}" data-album="${c.id}">${esc(c.emoji || '📅')} ${esc(c.name)} <small>${album(c.id).length}</small></button>`).join('')}</div>` : ''}
-    <p style="color:var(--muted);margin:6px 0 12px"><b>${rows.length} of ${photoCap(calId)}</b> · wall displays showing ${esc(calName(calId))} play these${here !== null && calId === dispCal() ? ` · ${here} saved on this screen` : ''}.${rw ? ' Tap a photo to add a caption or memory.' : ' 👀 View only.'}</p>
+    <p style="color:var(--muted);margin:6px 0 12px"><b>${rows.length} of ${photoCap(calId)}</b> · wall displays showing ${esc(calName(calId))} play these${here !== null && dispCals().includes(calId) ? ` · ${here} saved on this screen` : ''}.${rw ? ' Tap a photo to add a caption or memory.' : ' 👀 View only.'}</p>
     <input type="file" id="ssShared2" accept="image/*,.heic,.heif" multiple class="hidden">
     ${rw ? '<div class="btns" style="margin:0 0 12px"><button class="btn primary" data-photoadd>＋ Add photos</button></div>' : ''}
     ${rows.length ? `<div class="pgrid">${rows.map(r => { const m = member(r.uploaded_by);
@@ -3497,8 +3500,34 @@ async function deletePhoto(id){
 
 /* ---------- Settings (lives in the "Me" sheet) ---------- */
 // The wall display shows exactly one calendar (and that calendar's photo album)
-function dispCal(){ const id = ssCfg().cal; return cal(id) ? id : (defaultCal() || S.cals[0]?.id || null); }
-const dispEvents = () => (S.evAll || []).filter(e => e.family_id === dispCal());
+function dispCals(){                                     // the calendars this screen shows (kept on the device)
+  const c = ssCfg(), ids = (Array.isArray(c.cals) ? c.cals : c.cal ? [c.cal] : []).filter(id => cal(id));
+  if(ids.length) return ids;
+  const w = S.cals.filter(x => x.role === 'contributor'); let last = null; try{ last = localStorage.getItem('famcal-lastcal'); }catch(e){}
+  const first = w.find(x => x.id === last) || w[0] || S.cals[0];
+  return first ? [first.id] : [];
+}
+const dispCal = () => dispCals()[0] || null;              // where things go when the screen needs just one
+const dispEvents = () => { const ids = dispCals(); return (S.evAll || []).filter(e => ids.includes(e.family_id)); };
+const dispTitle = () => dispCals().map(calName).join(' · ') || 'Calendar';
+function setDispCal(id, on){
+  const ids = new Set(dispCals());
+  if(on) ids.add(id); else { if(ids.size <= 1 && ids.has(id)){ toast('This screen needs at least one calendar'); render(); if($('#sheet').classList.contains('on')) ($('#sheet').dataset.panel === 'cal' && S.calOpen ? openCalSheet(S.calOpen) : reopenSettings()); return; } ids.delete(id); }
+  ssSave({ cals:S.cals.map(c => c.id).filter(x => ids.has(x)), cal:null });
+  applyView(); render(); photoSync(); if(SS.on) ssPanelRender();
+  if($('#sheet').classList.contains('on')) ($('#sheet').dataset.panel === 'cal' && S.calOpen ? openCalSheet(S.calOpen) : reopenSettings());
+}
+// The people who can write on this screen: everyone who adds to any of its calendars (by their name there)
+function dispWriters(){
+  const seen = new Set(), out = [];
+  dispCals().forEach(id => contributorsOf(id).forEach(m => { if(!seen.has(m.id)){ seen.add(m.id); out.push(m); } }));
+  return out;
+}
+// A code that signs this person in: one of the screen's calendars they add to, else any of theirs
+function codeFor(mid){
+  const ok = c => c.code && cmRow(c.id, mid) && !cmRow(c.id, mid).removed_at && cmRow(c.id, mid).role === 'contributor';
+  return (dispCals().map(cal).find(c => c && ok(c)) || S.cals.find(ok) || {}).code;
+}
 function ssSection(){
   const c = ssCfg(), own = SS.media.filter(m => !m.mid), vids = own.filter(m => m.type === 'video').length, pics = own.length - vids;
   const shared = sharedPhotos();
@@ -3517,8 +3546,9 @@ function ssSection(){
     ${chk('display', 'This device is a shared display')}
     <div class="hint" style="margin:4px 0 0">${c.display ? 'Settings below apply to this screen only.' : 'Turn on for a kitchen tablet or wall screen the whole family uses. Leave it off on personal phones.'}</div>
     ${c.display ? `<div class="ssub">
-      ${S.cals.length > 1 ? `<label class="ssrow"><span>Calendar on this screen</span><select data-ss-dcal>${S.cals.map(x => `<option value="${x.id}" ${x.id === dispCal() ? 'selected' : ''}>${esc(x.emoji || '📅')} ${esc(x.name)}</option>`).join('')}</select></label>
-      <div class="hint" style="margin:4px 0 6px">The screen shows this calendar’s plans and plays its photo album.</div>` : ''}
+      ${S.cals.length > 1 ? `<div class="lbl" style="margin-top:6px">Calendars on this screen</div>
+      ${S.cals.map(x => `<label class="ssrow dcal" style="--c:${esc(calColor(x.id))}"><span><i class="cdot"></i> ${esc(x.emoji || '📅')} ${esc(x.name)}</span><input type="checkbox" data-ss-dcal="${x.id}" ${dispCals().includes(x.id) ? 'checked' : ''}></label>`).join('')}
+      <div class="hint" style="margin:4px 0 6px">The screen shows these calendars’ plans and plays their photo albums. It doesn’t change what anyone sees on their own phone.</div>` : ''}
       ${chk('enabled', 'Screensaver')}
       ${c.enabled ? `<div class="hint" style="margin:4px 0 0">When the screen sits idle, today’s plan slides to the left and photos play on the right.</div>
       <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
@@ -3540,7 +3570,7 @@ document.addEventListener('change', e => {
   else if(t.dataset && t.dataset.ssToggle === 'display') ssDisplay(t.checked);
   else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); reopenSettings(); }
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
-  else if(t.dataset && t.dataset.ssDcal !== undefined){ ssSave({ cal:t.value }); toast(`🖼️ This screen shows ${calName(t.value)}`); photoSync(); if(SS.on) ssPanelRender(); reopenSettings(); }
+  else if(t.dataset && t.dataset.ssDcal !== undefined){ setDispCal(t.dataset.ssDcal, t.checked); }
   else if(t.dataset && t.dataset.ssSet){ ssSave({ [t.dataset.ssSet]: t.dataset.ssSet === 'style' ? t.value : +t.value }); if(t.dataset.ssSet === 'style') reopenSettings(); }
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
   else if((t.id === 'ssShared' || t.id === 'ssShared2') && t.files.length){ const fs = [...t.files]; t.value = ''; photosAdd(fs); }
@@ -3585,8 +3615,8 @@ function ssPanelRender(){
   const src = dispEvents();                               // just the calendar this screen shows
   const evs = d => eventsOn(d, src).filter(e => e.kind !== 'list').sort(sortEv);
   const cds = src.filter(e => hasCountdown(e) && !isSecret(e)).map(view).sort((a, b) => a.starts_on.localeCompare(b.starts_on)).slice(0, 3);
-  const feat = featuredList(dispCal());
-  const lists = src.filter(e => e.kind === 'list' && !e.starts_on && !isSecret(e) && e !== feat).slice(0, 4);
+  const feats = dispCals().map(id => featuredList(id)).filter(Boolean).slice(0, 2);
+  const lists = src.filter(e => e.kind === 'list' && !e.starts_on && !isSecret(e) && !feats.includes(e)).slice(0, 4);
   const later = []; for(let i = 2; i <= 8 && later.length < 5; i++) evs(addDays(t, i)).forEach(e => later.length < 5 && later.push(e));
   const today = evs(t), tomorrow = evs(addDays(t, 1));
   box.innerHTML = `
@@ -3603,10 +3633,10 @@ function ssPanelRender(){
       return (done.length ? `<div class="ssdone">✓ ${done.length} earlier today</div>` : '')
         + (rest.length ? rest.map(e => ssRow(e, 'today', nowHM)).join('') : `<div class="ssnone">${done.length ? 'That’s everything for today 🌙' : 'Nothing planned 🌤️'}</div>`); })()}
     ${tomorrow.length ? `<div class="sssec">Tomorrow</div>${tomorrow.map(e => ssRow(e, 'later', nowHM)).join('')}` : ''}
-    ${feat ? (() => { const it = itemsOf(feat.id), left = it.filter(i => !i.done), fv = view(feat);
+    ${feats.map(feat => { const it = itemsOf(feat.id), left = it.filter(i => !i.done), fv = view(feat);
       return `<div class="sssec">⭐ ${esc(fv.sticker || '☑️')} ${esc(fv.title || 'List')}</div><div class="ssfeat">${left.length
         ? left.slice(0, 12).map(i => `<span>${esc(i.text)}</span>`).join('') + (left.length > 12 ? `<small>+${left.length - 12} more</small>` : '')
-        : `<small>${it.length ? 'All done ✓' : 'Nothing on the list yet'}</small>`}</div>`; })() : ''}
+        : `<small>${it.length ? 'All done ✓' : 'Nothing on the list yet'}</small>`}</div>`; }).join('')}
     ${later.length ? `<div class="sssec">Coming up</div>${later.map(e => ssRow(e, 'later', nowHM)).join('')}` : ''}
     ${lists.length ? `<div class="sssec">Lists</div><div class="sslists">${lists.map(e => { const left = itemsOf(e.id).filter(i => !i.done).length;
       return `<span>${esc(e.sticker || '☑️')} ${esc(e.title)} <small>${left ? left + ' left' : '✓'}</small></span>`; }).join('')}</div>` : ''}`;
@@ -3631,7 +3661,7 @@ function ssNext(){
   clearTimeout(SS.advT);
   const stage = $('#ssStage'); if(!SS.on || !stage) return;
   if(!SS.media.length){
-    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(calName(dispCal()))}</b><span>${sharedPhotos() ? 'Add photos with the 🖼️ button' : 'Add photos in ⚙️ Settings → Shared display'}</span></div>`;
+    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(dispTitle())}</b><span>${sharedPhotos() ? 'Add photos with the 🖼️ button' : 'Add photos in ⚙️ Settings → Shared display'}</span></div>`;
     return;
   }
   if(SS.fails > SS.media.length){                   // nothing would load: say why instead of showing a black screen
@@ -3770,7 +3800,7 @@ function scrapPage(stage){                             // a fresh page under the
   if(!book){ [...stage.children].forEach(ssDrop); book = document.createElement('div'); book.className = 'sbook'; stage.appendChild(book); }
   const W = stage.clientWidth, H = stage.clientHeight, now = new Date();
   const pg = document.createElement('div'); pg.className = 'sbpage ' + pickOne(['cream', 'kraft', 'grid']);
-  pg.innerHTML = `<div class="sbhead">${esc(calName(dispCal()))}<small>${esc(now.toLocaleDateString(undefined, { month:'long', year:'numeric' }))}</small></div>`;
+  pg.innerHTML = `<div class="sbhead">${esc(dispTitle())}<small>${esc(now.toLocaleDateString(undefined, { month:'long', year:'numeric' }))}</small></div>`;
   const old = SB.page && SB.page.isConnected ? SB.page : null;
   book.prepend(pg);
   if(old){
@@ -3836,7 +3866,7 @@ function postcardNotes(){                              // little notes from what
     notes.push({ text: `Don’t forget: ${v.title}${when(e)} today.`, stamp: stickerOf(v) }); });
   eventsOn(addDays(t, 1), src).filter(ok).sort(sortEv).slice(0, 2).forEach(e => { const v = view(e);
     notes.push({ text: `Tomorrow: ${v.title}${when(e)}.`, stamp: stickerOf(v) }); });
-  const f = featuredList(dispCal());
+  const f = dispCals().map(id => featuredList(id)).find(Boolean);
   if(f){ const left = itemsOf(f.id).filter(i => !i.done), v = view(f);
     if(left.length) notes.push({ text: `Please pick up: ${left.slice(0, 3).map(i => i.text).join(', ')}${left.length > 3 ? ` + ${left.length - 3} more` : ''}.`, stamp: v.sticker || '🛒' }); }
   return notes;
@@ -4060,7 +4090,8 @@ async function ssInit(force){
    for a minute, the screensaver starts, or they tap the ✏️ chip; then it goes back to the screen's own sign-in.
    Switching uses the same claim_member PIN check as signing in, so nobody can write as someone else without their PIN. */
 const PEN = { who:null, next:null, timer:null, pickT:null, idleMs:60000 };
-const penTag = () => PEN.who && member(PEN.who) ? ' · ✏️ ' + firstName(memberIn(PEN.who, dispCal()).name) : '';
+const penName = id => firstName((dispWriters().find(m => m.id === id) || member(id) || {}).name);
+const penTag = () => PEN.who && member(PEN.who) ? ' · ✏️ ' + penName(PEN.who) : '';
 function penRender(){
   const b = $('#penChip'); if(!b) return;
   const m = PEN.who && member(PEN.who);
@@ -4076,7 +4107,7 @@ function penGate(next, only){            // run `next` now if this person alread
 }
 function penPick(next, only){
   PEN.next = next;
-  const pool = contributorsOf(dispCal()), list = only ? pool.filter(m => m.id === only) : pool;
+  const pool = dispWriters(), list = only ? pool.filter(m => m.id === only) : pool;
   openSheet(`<h3>${only ? 'Edit as…' : 'Who’s holding the pen?'}</h3>
     <p style="color:var(--muted);margin:6px 0 4px">${only ? 'Only the person who made this can change it.' : 'Pick yourself so it’s saved under your name.'}</p>
     <div class="who">${list.map(m => `<button data-penpick="${m.id}">${avatar(m, 'lg')}${esc(firstName(m.name))}</button>`).join('')}</div>
@@ -4097,7 +4128,7 @@ function penPin(id, err){
 function penCancel(){ PEN.next = null; clearTimeout(PEN.pickT); closeSheet(); }
 async function penTake(id, pin){
   try{
-    if(B.mode === 'supabase') await B.claim(cal(dispCal())?.code, id, pin);   // the database checks the PIN
+    if(B.mode === 'supabase') await B.claim(codeFor(id), id, pin);   // the database checks the PIN
     else await B.switchMember(id);                                      // demo mode has no PINs
     PEN.who = id; S.filter.clear(); await refresh();
   }catch(e){ return penPin(id, e.message); }
@@ -4109,7 +4140,7 @@ async function penDown(quiet){
   clearTimeout(PEN.timer); const c = ssCfg();
   try{
     if(c.homeId && S.me && S.me.id !== c.homeId){
-      if(B.mode === 'supabase') await B.claim(cal(dispCal())?.code, c.homeId, c.homePin); else await B.switchMember(c.homeId);
+      if(B.mode === 'supabase') await B.claim(codeFor(c.homeId), c.homeId, c.homePin); else await B.switchMember(c.homeId);
     }
     PEN.who = null; S.filter.clear(); await refresh(); penRender(); if(!quiet) toast('✏️ Pen down');
   }catch(e){ penBump(); toast('⚠️ Couldn’t switch back: ' + e.message); }
@@ -4119,7 +4150,7 @@ async function penEnable(box){                  // turning the shared-screen set
   if(B.mode === 'supabase'){
     pin = (prompt(`Enter ${me.name}'s PIN. This screen keeps it so it can switch back after someone writes an event.`) || '').trim();
     if(!pin){ box.checked = false; return; }
-    try{ await B.claim(cal(dispCal())?.code, me.id, pin); }catch(e){ box.checked = false; return toast('⚠️ ' + e.message); }
+    try{ await B.claim(codeFor(me.id), me.id, pin); }catch(e){ box.checked = false; return toast('⚠️ ' + e.message); }
   }
   ssSave({ shared:true, homeId:me.id, homePin:pin }); toast('✏️ Ask who’s writing is on'); reopenSettings();
 }
