@@ -82,6 +82,22 @@ input,textarea{font:inherit;color:inherit}
 main{padding:4px 16px 20px}
 .dayhead{display:flex;align-items:baseline;gap:8px;margin:6px 2px 12px}
 .dayhead h2{margin:0;font-size:26px;letter-spacing:-.02em}
+.dayhead .wxd{margin-left:auto;font-weight:800;color:var(--ink,inherit);white-space:nowrap}
+.dayhead .wxd small{font-weight:700;color:var(--muted)}
+.wxe{white-space:nowrap}
+.wxw{font-style:normal;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.wxwhere{display:flex;align-items:center;gap:10px;padding:10px 2px 4px}
+.wxwhere span{flex:1}
+.wxpick{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:10px;background:var(--soft);margin-top:6px;font-weight:700}
+.wxpick small{margin-left:6px;color:var(--muted);font-weight:600}
+.sswx{display:flex;align-items:center;gap:12px;margin:-4px 2px 8px}
+.sswn{font-size:clamp(26px,2.6vw,34px);white-space:nowrap}
+.sswn b{font-weight:800;letter-spacing:-.02em}
+.sswt{font-size:13px;font-weight:700;color:var(--muted);line-height:1.3}
+.sswd{display:flex;gap:6px;margin:0 0 14px}
+.sswd span{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border-radius:12px;background:rgba(127,127,127,.12);font-size:18px}
+.sswd small{font-size:11px;font-weight:700;color:var(--muted)}
+.sswd b{font-size:13px;font-weight:800}
 .dayhead span{color:var(--muted);font-weight:600}
 .sub{margin:22px 2px 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 
@@ -1449,7 +1465,7 @@ function renderMain(){
       if(pins.length) h += `<div class="pinned">${pins.map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
         return `<button class="pin" data-open="${e.id}">${esc(e.sticker||'☑️')} ${esc(e.title)} <small>${left ? left+' left' : 'done ✓'}</small></button>`; }).join('')}</div>`;
     }
-    h += `<div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>`;
+    h += `<div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span>${wxDayTag(S.sel)}</div>`;
     h += dayList(S.sel, `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
       <button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`);
     h += featuredList() ? `<div class="featslot">${featuredCard(8)}</div>` : '';      // the featured list sits between the day and what's coming up
@@ -1489,7 +1505,7 @@ function renderDesk(){
     h += pushNudge() + countdownStrip();
     const evs = dayEvents(S.sel), up = [];
     for(let i=1; i<=30 && up.length<12; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<12 && up.push(e));
-    h += `<div class="split"><div><div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span></div>${dayList(S.sel, empty)}</div>
+    h += `<div class="split"><div><div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span>${wxDayTag(S.sel)}</div>${dayList(S.sel, empty)}</div>
       <div><div class="sub">Coming up</div>${up.length ? up.map(rowHTML).join('') : '<p style="color:var(--muted)">Nothing else on the calendar yet.</p>'}</div></div>`;
   }
   $('#main').innerHTML = h;
@@ -1523,7 +1539,7 @@ function weekGrid(){
   let head = '<div class="wv-corner"></div>', all = '<div class="wv-gut wv-alllbl">all day</div>', cols = '';
   days.forEach(d => {
     const dt = parseYmd(d), evs = dayEvents(d);
-    head += `<button class="wv-dh ${d===t?'today':''} ${d===S.sel?'sel':''}" data-dayview="${d}"><span>${dt.toLocaleDateString(undefined,{weekday:'short'})}</span><b>${dt.getDate()}</b></button>`;
+    head += `<button class="wv-dh ${d===t?'today':''} ${d===S.sel?'sel':''}" data-dayview="${d}"><span>${dt.toLocaleDateString(undefined,{weekday:'short'})}</span><b>${dt.getDate()}</b>${(x => x ? `<i class="wxw">${wxIcon(x.code)} ${deg(x.hi)}</i>` : '')(wxDay(d))}</button>`;
     const untimed = evs.filter(e => !e.start_time);
     all += `<div class="wv-all ${d===t?'today':''}">${untimed.slice(0,3).map(e => chipHTML(e)).join('')}${untimed.length > 3 ? `<button class="more" data-dayview="${d}">+${untimed.length-3} more</button>` : ''}${hasCountdownOn(d)}</div>`;
     const blocks = layoutDay(evs.filter(e => e.start_time)).map(({e, s, en, lane, lanes}) => {
@@ -1591,7 +1607,7 @@ function card(ev){
   }
   let h = `<div class="card${isFeatured(v) ? ' feat' : ''}" style="--c:${esc(o.color)}" data-open="${v.id}">${isFeatured(v) ? '<div class="feattag">⭐ Featured list</div>' : ''}`;
   { const st = v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`); if(st) h += `<button class="sticker" data-react="${esc(st)}" data-id="${v.id}" title="React with ${esc(st)}" aria-label="React with ${esc(st)}">${esc(st)}</button>`; }
-  h += `<div class="when">${esc(whenText(v, withDay))}${isSecret(v) ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
+  h += `<div class="when">${esc(whenText(v, withDay))}${wxEventTag(v)}${isSecret(v) ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
   const meta = [];
   meta.push(avatar(o,'sm'));
   if(v.place) meta.push(`<span>📍 ${esc(v.place)}</span>`);
@@ -1633,6 +1649,103 @@ function reactsHTML(v, onCard){
   return `<div class="reacts">${chips}<button class="addr${open ? ' on' : ''}" data-reactpick="${v.id}" aria-label="Add a reaction">${open ? '✕' : '＋😀'}</button></div>`
     + (open ? `<div class="rtray">${REACT.map(st => `<button data-react="${st}" data-id="${v.id}">${st}</button>`).join('')}</div>` : '');
 }
+
+/* ========================= Weather (Open-Meteo: free, no account, no key) =========================
+   Per device: uses the device's location when it's been allowed, otherwise a chosen city, otherwise Kohler, WI. */
+const WX_HOME = { name:'Kohler, WI', lat:43.7397, lon:-87.7815 };
+const WX = { data:null, key:'', busy:false };
+function wxCfg(){ let c = {}; try{ c = JSON.parse(localStorage.getItem('famcal-wx') || '{}'); }catch(e){} return { on:true, unit:'F', mode:'auto', place:WX_HOME, geo:null, ...c }; }
+function wxSave(p){ try{ localStorage.setItem('famcal-wx', JSON.stringify({ ...wxCfg(), ...p })); }catch(e){} }
+function wxWhere(){ const c = wxCfg(); return c.mode === 'auto' && c.geo ? { name:'Your location', lat:c.geo.lat, lon:c.geo.lon, here:true } : c.place || WX_HOME; }
+const WX_CODES = [[[0], '☀️', 'Clear'], [[1], '🌤️', 'Mostly clear'], [[2], '⛅', 'Partly cloudy'], [[3], '☁️', 'Cloudy'], [[45, 48], '🌫️', 'Fog'],
+  [[51, 53, 55, 56, 57], '🌦️', 'Drizzle'], [[61, 63, 65, 66, 67], '🌧️', 'Rain'], [[71, 73, 75, 77], '🌨️', 'Snow'], [[80, 81, 82], '🌦️', 'Showers'],
+  [[85, 86], '🌨️', 'Snow showers'], [[95, 96, 99], '⛈️', 'Thunderstorms']];
+function wxIcon(code, night){ const r = WX_CODES.find(x => x[0].includes(code)); const i = r ? r[1] : '🌡️'; return night && (code === 0 || code === 1) ? (code === 0 ? '🌙' : '☁️') : i; }
+const wxWord = code => (WX_CODES.find(x => x[0].includes(code)) || [0, 0, ''])[2];
+const deg = t => t == null ? '' : Math.round(t) + '°';
+function wxDay(d){ const w = WX.data; if(!wxCfg().on || !w) return null; const i = w.daily.time.indexOf(d); if(i < 0) return null;
+  return { code:w.daily.weather_code[i], hi:w.daily.temperature_2m_max[i], lo:w.daily.temperature_2m_min[i], pop:w.daily.precipitation_probability_max[i] }; }
+function wxAt(d, hm){ const w = WX.data; if(!wxCfg().on || !w || !hm) return null; const i = w.hourly.time.indexOf(`${d}T${hm.slice(0, 2)}:00`); if(i < 0) return null;
+  const h = +hm.slice(0, 2); return { code:w.hourly.weather_code[i], t:w.hourly.temperature_2m[i], pop:w.hourly.precipitation_probability[i], night:h < 6 || h >= 18 }; }
+function wxNow(){ const w = WX.data; return wxCfg().on && w && w.current ? { code:w.current.weather_code, t:w.current.temperature_2m, night:!w.current.is_day } : null; }
+const wxDayTag = d => { const x = wxDay(d); return x ? `<span class="wxd" title="${esc(wxWord(x.code))}">${wxIcon(x.code)} ${deg(x.hi)}<small> / ${deg(x.lo)}</small>${x.pop >= 40 ? `<small> 💧${x.pop}%</small>` : ''}</span>` : ''; };
+function wxEventTag(e){                                 // a small forecast on timed events in the next week
+  if(!e.starts_on || !e.start_time || e.starts_on < todayStr() || e.starts_on > addDays(todayStr(), 7) || isOver(e)) return '';
+  const x = wxAt(e.starts_on, e.start_time); if(!x) return '';
+  return ` · <span class="wxe">${wxIcon(x.code, x.night)} ${deg(x.t)}${x.pop >= 40 ? ` 💧${x.pop}%` : ''}</span>`;
+}
+async function wxLoad(force){
+  const c = wxCfg(); if(!c.on || WX.busy) return;
+  const at = wxWhere(), key = `${at.lat.toFixed(2)},${at.lon.toFixed(2)},${c.unit}`;
+  if(!force && WX.data && WX.key === key && Date.now() - WX.data._at < 30 * 60000) return;
+  if(!WX.data){ try{ const k = JSON.parse(localStorage.getItem('famcal-wxc') || 'null'); if(k && k.key === key){ WX.data = k.data; WX.key = key; wxPaint(); } }catch(e){} }
+  WX.busy = true;
+  try{
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${at.lat}&longitude=${at.lon}&current=temperature_2m,weather_code,is_day`
+      + `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&hourly=temperature_2m,weather_code,precipitation_probability`
+      + `&temperature_unit=${c.unit === 'C' ? 'celsius' : 'fahrenheit'}&timezone=auto&forecast_days=14`;
+    const r = await fetch(u); if(!r.ok) throw new Error('weather ' + r.status);
+    const d = await r.json(); d._at = Date.now();
+    WX.data = d; WX.key = key;
+    try{ localStorage.setItem('famcal-wxc', JSON.stringify({ key, data:d })); }catch(e){}
+    wxPaint();
+  }catch(e){ /* offline: keep whatever forecast we had */ }
+  finally{ WX.busy = false; }
+}
+function wxPaint(){ if(!S.me) return; renderMain(); if(SS.on) ssPanelRender(); if($('#sheet').dataset.panel === 'settings') reopenSettings(); }
+async function wxInit(){
+  const c = wxCfg();
+  if(c.on && c.mode === 'auto' && navigator.permissions && navigator.geolocation){      // only uses location if it was already allowed
+    try{ const st = await navigator.permissions.query({ name:'geolocation' }); if(st.state === 'granted') await wxLocate(true); }catch(e){}
+  }
+  wxLoad();
+  setInterval(() => wxLoad(), 30 * 60000);
+}
+function wxLocate(quiet){                               // ask the device where it is (prompts the first time)
+  return new Promise(res => {
+    if(!navigator.geolocation){ if(!quiet) toast('This device can’t share its location'); return res(false); }
+    navigator.geolocation.getCurrentPosition(p => {
+      wxSave({ mode:'auto', geo:{ lat:+p.coords.latitude.toFixed(3), lon:+p.coords.longitude.toFixed(3), at:Date.now() } });
+      if(!quiet) toast('📍 Using this device’s location'); wxLoad(true); res(true);
+    }, () => { if(!quiet) toast('Location isn’t available. Pick a city instead.'); res(false); }, { maximumAge:6 * 3600000, timeout:12000 });
+  });
+}
+function weatherSection(){
+  const c = wxCfg(), at = wxWhere(), n = wxNow();
+  return `<div class="ssset">
+    <label class="ssrow"><span>Show weather</span><input type="checkbox" id="wxOn" ${c.on ? 'checked' : ''}></label>
+    ${c.on ? `<div class="wxwhere"><span>${at.here ? '📍' : '🏙️'} <b>${esc(at.name)}</b>${n ? ` · ${wxIcon(n.code, n.night)} ${deg(n.t)}` : ''}</span>
+      <select id="wxUnit" aria-label="Units"><option value="F" ${c.unit !== 'C' ? 'selected' : ''}>°F</option><option value="C" ${c.unit === 'C' ? 'selected' : ''}>°C</option></select></div>
+    <div class="btns"><button class="btn" id="wxHere">📍 Use my location</button><button class="btn" id="wxCity">Pick a city</button></div>
+    <div id="wxSearch" class="hidden"><input class="field" id="wxQ" placeholder="City or town…" autocomplete="off" enterkeyhint="search"><div id="wxRes"></div></div>
+    <div class="hint" style="margin:4px 0 0">Just for this device. Forecast from Open-Meteo.</div>` : ''}
+  </div>`;
+}
+const US_ST = Object.fromEntries('Alabama AL Alaska AK Arizona AZ Arkansas AR California CA Colorado CO Connecticut CT Delaware DE Florida FL Georgia GA Hawaii HI Idaho ID Illinois IL Indiana IN Iowa IA Kansas KS Kentucky KY Louisiana LA Maine ME Maryland MD Massachusetts MA Michigan MI Minnesota MN Mississippi MS Missouri MO Montana MT Nebraska NE Nevada NV New_Hampshire NH New_Jersey NJ New_Mexico NM New_York NY North_Carolina NC North_Dakota ND Ohio OH Oklahoma OK Oregon OR Pennsylvania PA Rhode_Island RI South_Carolina SC South_Dakota SD Tennessee TN Texas TX Utah UT Vermont VT Virginia VA Washington WA West_Virginia WV Wisconsin WI Wyoming WY'
+  .split(' ').reduce((a, w, i, all) => (i % 2 ? a : [...a, [w.replace(/_/g, ' '), all[i + 1]]]), []));
+let wxQT;
+async function wxSearch(q){
+  const box = $('#wxRes'); if(!box) return; if(q.trim().length < 2){ box.innerHTML = ''; return; }
+  try{
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q.trim())}&count=6&language=en`); const d = await r.json();
+    const list = d.results || [];
+    box.innerHTML = list.length ? list.map((x, i) => `<button class="wxpick" data-wxpick="${i}">${esc(x.name)}<small>${esc([x.admin1, x.country_code === 'US' ? '' : x.country].filter(Boolean).join(', '))}</small></button>`).join('')
+      : '<div class="hint">No places found</div>';
+    box._list = list;
+  }catch(e){ box.innerHTML = '<div class="hint">Couldn’t search right now</div>'; }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('#wxHere,#wxCity,[data-wxpick]'); if(!t) return;
+  if(t.id === 'wxHere') wxLocate(false).then(ok => ok && reopenSettings());
+  else if(t.id === 'wxCity'){ $('#wxSearch').classList.remove('hidden'); $('#wxQ').focus(); }
+  else{ const x = $('#wxRes')._list[+t.dataset.wxpick]; const st = x.country_code === 'US' && x.admin1 ? (US_ST[x.admin1] || x.admin1) : x.country;
+    wxSave({ mode:'place', place:{ name:`${x.name}${st ? ', ' + st : ''}`, lat:x.latitude, lon:x.longitude } }); toast(`🏙️ Weather for ${x.name}`); wxLoad(true); reopenSettings(); }
+});
+document.addEventListener('input', e => { if(e.target.id === 'wxQ'){ clearTimeout(wxQT); wxQT = setTimeout(() => wxSearch(e.target.value), 300); } });
+document.addEventListener('change', e => {
+  if(e.target.id === 'wxOn'){ wxSave({ on:e.target.checked }); if(e.target.checked) wxLoad(true); renderMain(); if(SS.on) ssPanelRender(); reopenSettings(); }
+  else if(e.target.id === 'wxUnit'){ wxSave({ unit:e.target.value }); wxLoad(true); }
+});
 
 // Today's events that have already ended (or, with no end time, started over an hour ago). All-day ones never count.
 const nowHM = () => { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
@@ -2156,6 +2269,7 @@ function openSettings(){                        // the ⚙️ button: this devic
   const me = S.me, ad = admins();
   let h = `<h3 class="sheeth">⚙️ Settings</h3>
     <div class="lbl">Notifications</div>${pushSection()}
+    <div class="lbl">🌤️ Weather</div>${weatherSection()}
     <div class="lbl">Shared display</div>${ssSection()}
     <div class="lbl">Family stickers</div>${stickersSection()}
     <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
@@ -2870,6 +2984,10 @@ function ssPanelRender(){
   box.innerHTML = `
     <div class="ssclock"><b>${esc(mm ? mm[1] : tm)}</b>${mm ? `<small>${esc(mm[2].toLowerCase())}</small>` : ''}</div>
     <div class="ssdate">${esc(now.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' }))}</div>
+    ${(() => { const n = wxNow(), d0 = wxDay(t); if(!n || !d0) return '';
+      const days = [1, 2, 3, 4, 5].map(i => [addDays(t, i), wxDay(addDays(t, i))]).filter(x => x[1]);
+      return `<div class="sswx"><span class="sswn">${wxIcon(n.code, n.night)} <b>${deg(n.t)}</b></span><span class="sswt">${esc(wxWord(n.code))}<br>H ${deg(d0.hi)} · L ${deg(d0.lo)}${d0.pop >= 30 ? ` · 💧${d0.pop}%` : ''}</span></div>
+        <div class="sswd">${days.map(([d, x]) => `<span><small>${esc(new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday:'short' }))}</small>${wxIcon(x.code)}<b>${deg(x.hi)}</b><small>${deg(x.lo)}</small></span>`).join('')}</div>`; })()}
     ${cds.length ? `<div class="sscds">${cds.map(e => { const n = daysUntil(e.starts_on), o = member(e.owner_id) || { color:'#ff6b4a' };
       return `<span class="sscd" style="--c:${esc(o.color)}">${esc(view(e).sticker || '⏳')} <b>${n === 0 ? 'Today!' : n + 'd'}</b> <span>${esc(view(e).title)}</span></span>`; }).join('')}</div>` : ''}
     <div class="sssec">Today</div>
@@ -3435,6 +3553,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id 
     if(B.mode === 'supabase' && S.family && !S.family.tz && tz) B.updateFamily({tz}).catch(()=>{});
     pushInit();
     ssInit(q.get('display') === '1');
+    wxInit();
   }catch(e){
     if(e.message === 'not-member') return ob('welcome');
     console.error(e);
