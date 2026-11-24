@@ -275,12 +275,18 @@ main{padding:4px 16px 20px}
 .helpers{display:flex;gap:8px;margin:2px 0 10px;flex-wrap:wrap;align-items:center}
 .helpers .hb{flex:none}
 .hb{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-weight:800;font-size:14px;border:1.5px solid var(--hc);color:color-mix(in srgb,var(--hc) 80%,var(--ink));background:color-mix(in srgb,var(--hc) 10%,var(--card))}
+.hb-cal .hbcal{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:color-mix(in srgb,var(--hc) 22%,transparent);margin-left:-4px}
+.sugg .calsug .cdot{width:10px;height:10px;border-radius:50%;background:var(--c);display:inline-block;margin-right:4px}
+.sugg .calsug.on{box-shadow:inset 0 0 0 1.5px var(--c)}
 .hb-who{--hc:#a855f7}.hb-where{--hc:#10b981}.hb-when{--hc:#3b82f6}
 .hb.on{background:var(--hc);color:#fff}
 .hbav{display:flex}
 .hbav i{font-style:normal;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;margin-left:-6px;background:color-mix(in srgb,var(--c) 25%,var(--card));box-shadow:0 0 0 1.5px var(--card)}
 .hbav i:first-child{margin-left:0}
 .sugg button.whenchip{padding:6px 12px;color:#1d4ed8;background:color-mix(in srgb,#3b82f6 10%,var(--card))}
+.sugg label.whenchip.pick{position:relative;flex:none;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:15px;color:#fff;background:#3b82f6;box-shadow:var(--shadow);cursor:pointer}
+.sugg label.whenchip.pick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.p .car{font-size:11px;opacity:.5;margin-left:-2px}
 .sugg-tip{font-size:14px;color:var(--muted);padding:4px 2px}
 @media (prefers-color-scheme: dark){ .sugg button.whenchip{color:#93c5fd} }
 .big::placeholder{color:color-mix(in srgb,var(--muted) 70%,transparent)}
@@ -895,6 +901,7 @@ main{padding:4px 16px 20px}
       <button class="hb hb-who" data-help="who"><span class="hbav" id="cWhoAv"></span>@ Who</button>
       <button class="hb hb-where" data-help="where">📍 # Where</button>
       <button class="hb hb-when" data-help="when">📅 When</button>
+      <button class="hb hb-cal hidden" data-help="cal" id="cCalHelp"><span class="hbcal" id="cCalEm"></span>+ Calendar</button>
     </div>
     <div class="sugg" id="cSugg"></div>
     <div class="hint" id="cHint"></div>
@@ -1184,10 +1191,8 @@ function parseQuick(raw, opts={}){
   let h = ' ' + head.replace(/\s+/g,' ') + ' ';
   // "+Church" puts it on that calendar (any calendar you add to, by name or the start of a word in it)
   h = h.replace(/(\s)\+([A-Za-z][\w'’-]*)/g, (m, sp, n) => {
-    const low = n.toLowerCase(), w = (S.cals || []).filter(c => c.role === 'contributor'); if(low.length < 2) return m;
-    const c = w.find(x => x.name.toLowerCase().replace(/\s+/g, '') === low) || w.find(x => x.name.toLowerCase().replace(/\s+/g, '').startsWith(low))
-      || w.find(x => x.name.toLowerCase().split(/\s+/).some(word => word.startsWith(low)));
-    if(!c) return m;
+    const low = n.toLowerCase(); if(low.length < 2) return m;
+    const c = findCal(low); if(!c) return m;
     r.cal = c.id; (r.tags = r.tags || []).push({tok:'+' + n, color:calColor(c.id)}); return sp + ' ';
   });
   const pool = (r.cal || opts.cal) && S.cals?.length ? contributorsOf(r.cal || opts.cal) : S.members;    // only people who add to that calendar can be tagged
@@ -1212,6 +1217,17 @@ function parseQuick(raw, opts={}){
   for(let i=0;i<3;i++) t = t.replace(/\s+(at|on|from|with|in|by|this|-|–)$/i,'').replace(/^(at|on)\s+/i,'');
   r.title = t;
   return r;
+}
+
+// "+church" → the calendar you add to whose name (or a word in it) starts with that
+function findCal(low){
+  const w = (S.cals || []).filter(c => c.role === 'contributor'), flat = x => x.name.toLowerCase().replace(/\s+/g, '');
+  return w.find(x => flat(x) === low) || w.find(x => flat(x).startsWith(low)) || w.find(x => x.name.toLowerCase().split(/\s+/).some(word => word.startsWith(low)));
+}
+// A word that picks this calendar, last word first: "Sheboygan Ward Youth" → +Youth (unless another calendar claims it)
+function calToken(c){
+  const words = c.name.split(/\s+/).map(x => x.replace(/[^\w'’-]/g, '')).filter(x => x.length >= 2 && /^[A-Za-z]/.test(x)).reverse();     // the last word is usually what people call it
+  return words.find(x => findCal(x.toLowerCase()) === c) || c.name.replace(/[^\w'’-]/g, '');
 }
 
 /* ========================= State ========================= */
@@ -2226,14 +2242,17 @@ function updateComposer(){
     d.kind==='list' ? 'Type <b>Groceries: milk, eggs, bread</b> — items light up as you go.' :
     typed ? '' : 'Type it like a text message. Words light up when I understand them. 🎙️ Or just say it with the mic on your keyboard.';
   renderHighlights(d); renderLive(d);
+  { const b = $('#cCalHelp'), many = writableCals().length > 1 && C.scope !== 'one';     // + Calendar: only if you add to more than one
+    b.classList.toggle('hidden', !many);
+    if(many){ b.style.setProperty('--hc', calColor(d.cal)); $('#cCalEm').textContent = calEmoji(d.cal); b.title = `On ${calName(d.cal)} — tap to pick another`; } }
   // pills
   const dateLbl = d.date ? (d.date===todayStr() ? 'Today' : d.date===addDays(todayStr(),1) ? 'Tomorrow' : shortDate(d.date)) : 'No date';
   let p = '';
   const wc = writableCals();
   if(wc.length > 1 && C.scope !== 'one') p += `<label class="p calp" style="--c:${esc(calColor(d.cal))}">${esc(calEmoji(d.cal))} ${esc(calName(d.cal))}<select id="cCal" aria-label="Calendar">${wc.map(c => `<option value="${c.id}" ${c.id === d.cal ? 'selected' : ''}>${esc(c.emoji || '📅')} ${esc(c.name)}</option>`).join('')}</select></label>`;
-  p += `<label class="p ${d.date?'':'off'}">📅 ${esc(dateLbl)}<input type="date" id="cDate" value="${d.date||''}"></label>`;
+  p += `<label class="p ${d.date?'':'off'}">📅 ${esc(dateLbl)}<input type="date" id="cDate" value="${d.date||''}"><span class="car">▾</span></label>`;
   if(d.date){
-    p += `<label class="p ${d.start?'':'off'}">🕒 ${d.start ? esc(fmtTime(d.start)) : 'All day'}<input type="time" id="cStart" value="${d.start||''}" step="300"></label>`;
+    p += `<label class="p ${d.start?'':'off'}">🕒 ${d.start ? esc(fmtTime(d.start)) : 'All day'}<input type="time" id="cStart" value="${d.start||''}" step="300"><span class="car">▾</span></label>`;
     if(d.start) p += `<label class="p ${d.end?'':'off'}">${d.end ? 'until ' + esc(fmtTime(d.end)) : '+ end'}<input type="time" id="cEnd" value="${d.end||''}" step="300"></label>`;
     if(d.start) p += `<button class="p off" id="cClearTime">✕ time</button>`;
   }
@@ -2244,7 +2263,7 @@ function updateComposer(){
       ['weekly', multi && cur === 'weekly' ? repeatLabel({ repeat:'weekly', repeat_days:r.days, starts_on:dd }, true) : `Every week on ${wd}`],
       ['biweekly', multi && cur === 'biweekly' ? repeatLabel({ repeat:'biweekly', repeat_days:r.days, starts_on:dd }, true) : `Every other ${wd}`],
       ['monthly_date', `Monthly on the ${ordinal(+dd.slice(8, 10))}`], ['monthly_day', `Monthly on the ${n === 5 ? 'last' : ordinal(n)} ${wd}`]];
-    p += `<label class="p ${r ? 'cdp' : 'off'}">🔁 ${r ? esc(repeatLabel({ repeat:r.repeat, repeat_days:r.days, starts_on:dd }, true)) : 'Repeat'}<select id="cRepeat" aria-label="Repeat">${opts.map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+    p += `<label class="p ${r ? 'cdp' : 'off'}">🔁 ${r ? esc(repeatLabel({ repeat:r.repeat, repeat_days:r.days, starts_on:dd }, true)) : 'Repeat'}<select id="cRepeat" aria-label="Repeat">${opts.map(([k, l]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select><span class="car">▾</span></label>`;
     if(r) p += `<label class="p ${r.until ? '' : 'off'}">${r.until ? 'until ' + esc(shortDate(r.until)) : '∞ No end date'}<input type="date" id="cUntil" min="${dd}" value="${r.until || ''}"></label>`
       + (r.until ? `<button class="p off" id="cUntilClear">✕ end</button>` : '');
   }
@@ -2355,7 +2374,11 @@ function insertAtCaret(str){
 }
 function helper(kind){
   C.whenOpen = kind === 'when' ? !C.whenOpen : false;
-  if(kind === 'who') insertAtCaret('@');
+  if(kind === 'cal'){                                            // swap any calendar already typed for a fresh "+"
+    const t = $('#cText'); t.value = t.value.replace(/(^|\s)\+[A-Za-z][\w'’-]*/g, (m, sp, i) => findCal(m.trim().slice(1).toLowerCase()) ? sp : m).replace(/\s{2,}/g, ' ');
+    insertAtCaret('+');
+  }
+  else if(kind === 'who') insertAtCaret('@');
   else if(kind === 'where') insertAtCaret('#');
   else { $('#cText').focus(); renderSugg(); }
   document.querySelectorAll('#cHelpers .hb').forEach(b => b.classList.toggle('on', b.dataset.help === 'when' && C.whenOpen));
@@ -2379,7 +2402,10 @@ function whenChips(){
   const t = todayStr(), days = [['today','Today'], ['tonight','Tonight'], ['tomorrow','Tomorrow']];
   for(let i = 2; i < 7; i++){ const dt = parseYmd(addDays(t, i)); const w = dt.toLocaleDateString('en-US', {weekday:'short'}); days.push([w, w]); }
   const times = ['9am','noon','3pm','5:30pm','6pm','7pm'];
-  return days.map(([v, l]) => `<button class="whenchip" data-when="${v}" data-wt="date">📅 ${l}</button>`).join('')
+  const d = C ? draft() : {};
+  return `<label class="whenchip pick">📆 Pick a date<input type="date" id="cWhenDate" value="${d.date || ''}" aria-label="Pick a date"></label>`
+    + `<label class="whenchip pick">🕒 Pick a time<input type="time" id="cWhenTime" value="${d.start || ''}" step="300" aria-label="Pick a time"></label>`
+    + days.map(([v, l]) => `<button class="whenchip" data-when="${v}" data-wt="date">📅 ${l}</button>`).join('')
     + times.map(v => `<button class="whenchip" data-when="${v}" data-wt="time">🕒 ${v}</button>`).join('');
 }
 
@@ -2413,10 +2439,19 @@ function renderSugg(){
   const el = $('#cText'), before = el.value.slice(0, el.selectionStart);
   const m = before.match(/([@#])([^\s@#]*)$/), box = $('#cSugg');
   if(C && C.whenOpen){ box.innerHTML = whenChips(); return; }
+  const pm = before.match(/(?:^|\s)\+([A-Za-z][\w'’-]*)?$/);
+  if(pm && writableCals().length > 1){
+    const q = (pm[1] || '').toLowerCase(), cur = draft().cal;
+    const list = writableCals().filter(c => !q || c.name.toLowerCase().replace(/\s+/g, '').startsWith(q) || c.name.toLowerCase().split(/\s+/).some(w => w.startsWith(q)));
+    box.innerHTML = list.length ? list.map(c => `<button class="place calsug ${c.id === cur ? 'on' : ''}" style="--c:${esc(calColor(c.id))}" data-ins="+${esc(calToken(c))}" data-inscal="${c.id}"><i class="cdot"></i>${esc(c.emoji || '📅')} ${esc(c.name)}</button>`).join('')
+      : `<span class="sugg-tip">No calendar you add to starts with “${esc(pm[1])}”</span>`;
+    return;
+  }
   if(!m){ box.innerHTML = ''; return; }
   const q = m[2].toLowerCase();
   if(m[1] === '@'){
-    const ms = S.members.filter(x => x.name.toLowerCase().startsWith(q));
+    const pool = S.cals.length ? contributorsOf(draft().cal) : S.members;
+    const ms = pool.filter(x => x.name.toLowerCase().startsWith(q) || (x.realName || '').toLowerCase().startsWith(q));
     box.innerHTML = ms.map(x => `<button data-ins="@${esc(firstName(x.name))}">${avatar(x,'sm')}${esc(x.name)}</button>`).join('') +
       ('everyone'.startsWith(q) ? `<button class="place" data-ins="@everyone">👨‍👩‍👧‍👦 Everyone</button>` : '');
   } else {
@@ -2426,7 +2461,7 @@ function renderSugg(){
   }
 }
 function insertToken(tok){
-  const el = $('#cText'), pos = el.selectionStart, before = el.value.slice(0, pos).replace(/[@#][^\s@#]*$/, ''), after = el.value.slice(pos);
+  const el = $('#cText'), pos = el.selectionStart, before = el.value.slice(0, pos).replace(/[@#][^\s@#]*$/, '').replace(/\+[A-Za-z]?[\w'’-]*$/, ''), after = el.value.slice(pos);
   el.value = before + tok + ' ' + after.replace(/^\s+/, '');
   const np = (before + tok + ' ').length; el.focus(); el.setSelectionRange(np, np); updateComposer(); autoGrow();
 }
@@ -3040,7 +3075,7 @@ document.addEventListener('click', e => {
     if(d.kind){ C.kind = d.kind; C.kindManual = true; C.kindMenu = false; updateComposer(); return; }
     if(d.qd !== undefined){ C.mDate = d.qd || null; updateComposer(); return; }
     if(d.stk){ const cur = draft().sticker; C.stickerManual = true; C.sticker = cur === d.stk ? null : d.stk; updateComposer(); return; }
-    if(d.ins){ insertToken(d.ins); return; }
+    if(d.ins){ if(d.inscal){ C.mCal = d.inscal; try{ localStorage.setItem('famcal-lastcal', d.inscal); }catch(err){} } insertToken(d.ins); renderSugg(); return; }
     if(d.help){ helper(d.help); return; }
     if(d.when){ applyWhen(d.when, d.wt); return; }
     if(d.stksug){ C.stickerManual = true; C.sticker = draft().sticker === d.stksug ? null : d.stksug; updateComposer(); return; }
@@ -3106,18 +3141,18 @@ $('#composer').addEventListener('change', e => {
     if(C.mDate === undefined && d.date) C.mDate = d.date;          // keep the day it's on
     updateComposer(); return; }
   if(C && e.target.id === 'cUntil'){ C.mUntil = e.target.value || null; if(document.activeElement === e.target){ refreshPickerLabel(e.target); C.pendingRender = true; } else updateComposer(); return; }
-  if(!C || !['cDate','cStart','cEnd'].includes(e.target.id)) return;   // typing in other boxes already updates live; re-rendering here would swallow taps
-  if(e.target.id === 'cDate'){ C.mDate = e.target.value || null; }
-  if(e.target.id === 'cStart'){ const d = draft(); const old = d.start, oldEnd = d.end; C.mStart = e.target.value || null;
+  if(!C || !['cDate','cStart','cEnd','cWhenDate','cWhenTime'].includes(e.target.id)) return;   // typing in other boxes already updates live; re-rendering here would swallow taps
+  if(e.target.id === 'cDate' || e.target.id === 'cWhenDate'){ C.mDate = e.target.value || null; }
+  if(e.target.id === 'cStart' || e.target.id === 'cWhenTime'){ const d = draft(); const old = d.start, oldEnd = d.end; C.mStart = e.target.value || null;
     C.mEnd = (old && oldEnd && C.mStart) ? shiftEnd(old, oldEnd, C.mStart) : (oldEnd && C.mStart && oldEnd > C.mStart ? oldEnd : null); }
   if(e.target.id === 'cEnd'){ const d = draft(); if(C.mStart === undefined) C.mStart = d.start; C.mEnd = e.target.value || null; }
   // While a date/time picker is open, never rebuild it (iPhone fires "change" the moment an empty picker opens,
   // and rebuilding would close it). Just refresh the pill's label; rebuild once the picker closes.
-  if(document.activeElement === e.target){ refreshPickerLabel(e.target); C.pendingRender = true; }
-  else updateComposer();
+  if(document.activeElement === e.target){ if(!e.target.id.startsWith('cWhen')) refreshPickerLabel(e.target); C.pendingRender = true; }
+  else { updateComposer(); if(e.target.id.startsWith('cWhen')) renderSugg(); }
 });
 $('#composer').addEventListener('click', e => {
-  const lbl = e.target.closest('#cPills label.p'); if(!lbl) return;
+  const lbl = e.target.closest('#cPills label.p, #cSugg label.pick'); if(!lbl) return;
   const inp = lbl.querySelector('input'); if(!inp) return;
   // Phones open the picker on tap by themselves; mouse/trackpad browsers need showPicker()
   if(matchMedia('(pointer:fine)').matches && typeof inp.showPicker === 'function'){
@@ -3126,8 +3161,8 @@ $('#composer').addEventListener('click', e => {
   }
 });
 $('#composer').addEventListener('focusout', e => {
-  if(!C || !C.pendingRender || !['cDate','cStart','cEnd','cUntil'].includes(e.target.id)) return;
-  C.pendingRender = false; setTimeout(() => { if(C) updateComposer(); }, 0);
+  if(!C || !C.pendingRender || !['cDate','cStart','cEnd','cUntil','cWhenDate','cWhenTime'].includes(e.target.id)) return;
+  C.pendingRender = false; setTimeout(() => { if(C){ updateComposer(); renderSugg(); } }, 0);
 });
 function refreshPickerLabel(input){
   const d = draft(), lbl = input.closest('label'); if(!lbl) return;
