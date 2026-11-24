@@ -393,7 +393,7 @@ main{padding:4px 16px 20px}
   body{padding:0 0 0 300px}
   .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:300px;overflow:auto;padding:22px 18px 28px;border-right:1px solid var(--line);background:color-mix(in srgb,var(--card) 55%,var(--bg));z-index:25}
   .desk{display:inline-flex}
-  .tabs,#meBtn,#setBtn,.top .week,.top .filters,.grab{display:none!important}
+  .tabs,#meBtn,#setBtn,#photoBtn,.top .week,.top .filters,.grab{display:none!important}
   .banner{margin:12px 28px 0}
   .top{padding:20px 28px 10px;border-bottom:1px solid var(--line);margin-bottom:14px}
   .toprow{gap:12px}
@@ -802,6 +802,7 @@ main{padding:4px 16px 20px}
     <div class="spacer"></div>
     <button class="pill penchip hidden" id="penChip" aria-label="Put the pen down"></button>
     <button class="pill" id="todayBtn">Today</button>
+    <button id="photoBtn" class="gear hidden" aria-label="Family photos" title="Family photos" data-photos>🖼️</button>
     <button id="setBtn" class="gear" aria-label="Settings" data-settings>⚙️</button>
     <button id="meBtn" aria-label="Me"></button>
   </div>
@@ -1395,7 +1396,7 @@ function renderSide(){
   const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(t,-7))).map(view)
     .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
   el.innerHTML = `
-    <div class="brand"><img src="${APP_ICON}" alt=""><b>${esc(S.family?.name || 'Family')}</b><button class="gear" data-settings aria-label="Settings" title="Settings">⚙️</button><button data-me aria-label="Me" title="You">${avatar(S.me)}</button></div>
+    <div class="brand"><img src="${APP_ICON}" alt=""><b>${esc(S.family?.name || 'Family')}</b>${sharedPhotos() ? '<button class="gear" data-photos aria-label="Family photos" title="Family photos">🖼️</button>' : ''}<button class="gear" data-settings aria-label="Settings" title="Settings">⚙️</button><button data-me aria-label="Me" title="You">${avatar(S.me)}</button></div>
     <button class="newbtn" data-new>＋ New <kbd>N</kbd></button>
     <button class="snav ${S.tab==='cal'?'on':''}" data-tab="cal"><span>📅</span>Calendar</button>
     <button class="snav ${S.tab==='lists'?'on':''}" data-tab="lists"><span>☑️</span>Lists<small>${lists.length || ''}</small></button>
@@ -1416,6 +1417,7 @@ function renderTop(){
   $('#monthTxt').textContent = sel.toLocaleDateString(undefined, {month:'long'}) + (sel.getFullYear() !== new Date().getFullYear() ? ' ' + sel.getFullYear() : '');
   $('#jump').value = S.sel;
   $('#meBtn').innerHTML = avatar(S.me);
+  $('#photoBtn').classList.toggle('hidden', !sharedPhotos());
   $('#todayBtn').classList.toggle('hidden', inRange(todayStr()));
   document.querySelectorAll('.viewsw button').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
   $('#rangeTxt').textContent = rangeLabel();
@@ -2155,7 +2157,6 @@ function openSettings(){                        // the ⚙️ button: this devic
   let h = `<h3 class="sheeth">⚙️ Settings</h3>
     <div class="lbl">Notifications</div>${pushSection()}
     <div class="lbl">Shared display</div>${ssSection()}
-    ${sharedPhotos() ? `<div class="lbl">📷 Family photos</div>${photosSection()}` : ''}
     <div class="lbl">Family stickers</div>${stickersSection()}
     <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
     <div class="codebox"><b>${esc(S.family?.code || '')}</b><button class="pill" id="shareCode">Share</button></div>
@@ -2717,7 +2718,8 @@ async function openPhotos(){                 // see and remove the family's shar
   if(need.length){ try{ const l = await B.photoLinks(need.map(r => r.path)); need.forEach(r => { if(l[r.path]) urls[r.id] = l[r.path]; }); }catch(e){} }
   ($('#sheet').dataset.blobs || '').split(' ').filter(Boolean).forEach(u => URL.revokeObjectURL(u));   // coming back from one photo
   PHOTO_URLS = urls;
-  openSheet(`<h3>Shared photos</h3><p style="color:var(--muted);margin:6px 0 12px">${S.media.length} of ${photoCap()} · every frame in the family shows these. Tap a photo to add a caption or memory.</p>
+  const here = ssOn() ? SS.media.filter(m => m.mid).length : null;
+  openSheet(`<h3 class="sheeth">🖼️ Family photos</h3><p style="color:var(--muted);margin:6px 0 12px"><b>${S.media.length} of ${photoCap()}</b> · every shared display in the family plays these${here !== null ? ` · ${here} saved on this screen` : ''}. Tap a photo to add a caption or memory.</p>
     <input type="file" id="ssShared2" accept="image/*,.heic,.heif" multiple class="hidden">
     <div class="btns" style="margin:0 0 12px"><button class="btn primary" data-photoadd>＋ Add photos</button></div>
     ${rows.length ? `<div class="pgrid">${rows.map(r => { const m = member(r.uploaded_by);
@@ -2787,7 +2789,7 @@ function ssSection(){
   const chk = (key, label) => `<label class="ssrow"><span>${label}</span><input type="checkbox" data-ss-toggle="${key}" ${c[key] ? 'checked' : ''}></label>`;
   const deviceMedia = shared
     ? `<div class="sshead">📱 Extra videos for this screen</div>
-    <div class="ssmedia">${own.length ? `${vids} video${vids === 1 ? '' : 's'}${pics ? ` · ${pics} photo${pics === 1 ? '' : 's'}` : ''}` : 'Videos you add here play only on this screen. Family photos are below.'}</div>
+    <div class="ssmedia">${own.length ? `${vids} video${vids === 1 ? '' : 's'}${pics ? ` · ${pics} photo${pics === 1 ? '' : 's'}` : ''}` : 'Videos you add here play only on this screen. Family photos are in 🖼️ Photos, next to ⚙️.'}</div>
     <input type="file" id="ssFile" accept="video/*" multiple class="hidden">
     <div class="btns"><button class="btn" id="ssPick">＋ Videos</button><button class="btn" id="ssLink">＋ By link</button></div>`
     : `<div class="sshead">🖼️ Photos &amp; videos</div>
@@ -2811,14 +2813,6 @@ function ssSection(){
       ${own.some(m => m.url) ? '<div class="btns"><button class="btn" id="ssPrune">Remove links that don’t load</button></div>' : ''}
       <div class="btns">${own.length ? `<button class="btn danger" id="ssClear">Remove ${shared ? 'this screen’s videos' : 'all'}</button>` : ''}<button class="btn primary" id="ssGo">▶ Start now</button></div>` : ''}
     </div>` : ''}
-  </div>`;
-}
-function photosSection(){                       // shared family photos: anyone can add from their phone; every shared display plays them
-  const cachedHere = SS.media.filter(m => m.mid).length;
-  return `<div class="ssset">
-    <div class="ssmedia" style="margin-top:0"><b>${S.media.length} of ${photoCap()}</b> photos · every shared display in the family plays them${ssOn() ? ` · ${cachedHere} saved on this screen` : ''}</div>
-    <input type="file" id="ssShared" accept="image/*,.heic,.heif" multiple class="hidden">
-    <div class="btns"><button class="btn" data-photoadd>＋ Add photos</button><button class="btn" data-photos>Manage${S.media.length ? ` (${S.media.length})` : ''}</button></div>
   </div>`;
 }
 document.addEventListener('change', e => {
@@ -2911,7 +2905,7 @@ function ssNext(){
   clearTimeout(SS.advT);
   const stage = $('#ssStage'); if(!SS.on || !stage) return;
   if(!SS.media.length){
-    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(S.family?.name || 'Family')}</b><span>Add photos in ⚙️ Settings → Family photos</span></div>`;
+    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(S.family?.name || 'Family')}</b><span>${sharedPhotos() ? 'Add photos with the 🖼️ button' : 'Add photos in ⚙️ Settings → Shared display'}</span></div>`;
     return;
   }
   if(SS.fails > SS.media.length){                   // nothing would load: say why instead of showing a black screen
