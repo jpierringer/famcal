@@ -293,6 +293,7 @@ main{padding:4px 16px 20px}
 .pills{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
 .p{position:relative;display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);font-weight:700;font-size:15px}
 .p.off{color:var(--muted);font-weight:600;box-shadow:none;border:1.5px dashed var(--line);background:transparent}
+.p.calp{background:color-mix(in srgb,var(--c) 18%,var(--card));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 55%,transparent);font-weight:800}
 .p input,.p select{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .scopeb{display:flex;flex-direction:column;align-items:flex-start;width:100%;margin:0 0 8px;padding:12px 16px;text-align:left}
 .scopeb small{font-weight:600;color:var(--muted);font-size:12px;margin-top:2px}
@@ -767,6 +768,42 @@ main{padding:4px 16px 20px}
 .ssfeat span{padding:5px 11px;border-radius:999px;background:var(--card);font-size:15px;font-weight:700}
 .ssfeat small{align-self:center;color:var(--muted);font-weight:700;padding:0 4px}
 .card.feat{box-shadow:0 0 0 2px #f5b301,var(--shadow)}
+.calrow{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+.calopen{flex:1;display:flex;align-items:center;gap:8px;padding:11px 2px;text-align:left;min-width:0}
+.calopen b{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calopen .chev{margin-left:auto;color:var(--muted);font-weight:800}
+.calopen .ce{font-size:18px}
+.cdot{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none}
+.sw2{position:relative;display:inline-block;width:42px;height:26px;flex:none}
+.sw2 input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer;z-index:1}
+.sw2 i{position:absolute;inset:0;border-radius:999px;background:var(--soft);transition:background .2s}
+.sw2 i::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.sw2 input:checked + i{background:var(--c,var(--accent))}
+.sw2 input:checked + i::after{transform:translateX(16px)}
+.linkrow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.linkrow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.linkrow small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.linkrow.off{opacity:.55}
+.newlink{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.newlink .field{flex:1;min-width:140px;margin:0}
+.newlink select{border-radius:10px;padding:10px 8px;background:var(--soft);border:0;font:inherit}
+.demoas{display:flex;flex-wrap:wrap;gap:6px}
+.fchip.calchip{opacity:.5;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 45%,transparent)}
+.fchip.calchip.shown{opacity:1;background:color-mix(in srgb,var(--c) 16%,var(--card))}
+.fchip.calchip .cdot{width:10px;height:10px;margin-right:2px;background:transparent;box-shadow:inset 0 0 0 2px var(--c)}
+.fchip.calchip.shown .cdot{background:var(--c)}
+.fsep{flex:none;width:1px;align-self:stretch;margin:6px 2px;background:var(--line)}
+.sbrow.calside{display:flex;align-items:center;gap:4px;padding:0}
+.sbtog{width:30px;height:30px;display:grid;place-items:center;flex:none}
+.sbtog .cdot{background:transparent;box-shadow:inset 0 0 0 2px var(--c)}
+.sbtog.shown .cdot{background:var(--c)}
+.sbname{text-align:left;padding:7px 4px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nocal{text-align:center;padding:40px 18px}
+.nocal .big{font-size:54px;display:block;margin-bottom:6px}
+.albums{display:flex;gap:6px;overflow-x:auto;margin:6px 0 4px;padding-bottom:2px}
+.albums .pill{flex:none}
+.albums .pill.on{background:color-mix(in srgb,var(--c) 20%,var(--card));box-shadow:inset 0 0 0 1.5px var(--c)}
+.caltag{font-size:12px;font-weight:700;color:color-mix(in srgb,var(--c) 70%,var(--ink,#222));background:color-mix(in srgb,var(--c) 14%,transparent);padding:1px 7px;border-radius:999px;white-space:nowrap}
 .feattag{display:inline-block;margin:-2px 0 6px;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,#f5b301 22%,var(--soft));font-size:12px;font-weight:800;letter-spacing:.02em}
 .sfeat{margin:14px 0 4px}
 .featslot{margin:16px 0 4px}
@@ -984,9 +1021,10 @@ function countdowns(){
     .sort((a,b) => a.starts_on.localeCompare(b.starts_on));
 }
 const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-function stickerMatches(text){
+const customFor = calId => (S.custom || []).filter(c => !calId || c.family_id === calId);
+function stickerMatches(text, calId){
   const s = (text||'').toLowerCase(), out = [];
-  for(const c of (S.custom||[])) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) out.push(c.emoji);
+  for(const c of customFor(calId === undefined && C ? C.curCal : calId)) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) out.push(c.emoji);
   for(const [re,e] of STICKER_KEYS) if(re.test(s)) out.push(e);
   return [...new Set(out)];
 }
@@ -996,9 +1034,9 @@ function stickerSuggestions(d){
   const familyFaves = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(x => x[0]);
   return [...new Set([d.sticker, ...fromText, ...familyFaves, '🎉','❤️','⭐','🍕','⚽','🎂','☕','🚗'].filter(Boolean))].slice(0, 6);
 }
-function autoSticker(text){
+function autoSticker(text, calId){
   const s = (text||'').toLowerCase();
-  for(const c of (S.custom||[])) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) return c.emoji;
+  for(const c of customFor(calId === undefined && C ? C.curCal : calId)) for(const w of c.words) if(new RegExp('(^|[^\\p{L}\\p{N}])' + escRe(w.toLowerCase()) + '(e?s)?($|[^\\p{L}\\p{N}])', 'u').test(s)) return c.emoji;
   for(const [re,e] of STICKER_KEYS) if(re.test(s)) return e;
   return null;
 }
@@ -1142,10 +1180,19 @@ function parseQuick(raw, opts={}){
     else head = raw;
   }
   let h = ' ' + head.replace(/\s+/g,' ') + ' ';
+  // "+Church" puts it on that calendar (any calendar you add to, by name or the start of a word in it)
+  h = h.replace(/(\s)\+([A-Za-z][\w'’-]*)/g, (m, sp, n) => {
+    const low = n.toLowerCase(), w = (S.cals || []).filter(c => c.role === 'contributor'); if(low.length < 2) return m;
+    const c = w.find(x => x.name.toLowerCase().replace(/\s+/g, '') === low) || w.find(x => x.name.toLowerCase().replace(/\s+/g, '').startsWith(low))
+      || w.find(x => x.name.toLowerCase().split(/\s+/).some(word => word.startsWith(low)));
+    if(!c) return m;
+    r.cal = c.id; (r.tags = r.tags || []).push({tok:'+' + n, color:calColor(c.id)}); return sp + ' ';
+  });
+  const pool = (r.cal || opts.cal) && S.cals?.length ? contributorsOf(r.cal || opts.cal) : S.members;    // only people who add to that calendar can be tagged
   h = h.replace(/@([A-Za-z][\w'’-]*)/g, (m, n) => {
     const low = n.toLowerCase();
-    if(/^(all|everyone|everybody|family|fam)$/.test(low)){ S.members.forEach(x => r.people.includes(x.id) || r.people.push(x.id)); (r.tags = r.tags || []).push({tok:m, color:'#a855f7'}); return ' '; }
-    const mm = S.members.find(x => firstName(x.name).toLowerCase() === low) || S.members.find(x => x.name.toLowerCase().startsWith(low));
+    if(/^(all|everyone|everybody|family|fam)$/.test(low)){ pool.forEach(x => r.people.includes(x.id) || r.people.push(x.id)); (r.tags = r.tags || []).push({tok:m, color:'#a855f7'}); return ' '; }
+    const mm = pool.find(x => firstName(x.name).toLowerCase() === low) || pool.find(x => x.name.toLowerCase().startsWith(low));
     if(mm){ if(!r.people.includes(mm.id)) r.people.push(mm.id); (r.tags = r.tags || []).push({tok:m, color:mm.color}); return ' '; }
     return m;
   });
@@ -1165,22 +1212,60 @@ function parseQuick(raw, opts={}){
 }
 
 /* ========================= State ========================= */
-const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false, media:[], mediaMissing:true, photoNotes:[] };
+const S = { tab:'cal', sel:todayStr(), filter:new Set(), me:null, family:null, cals:[], cm:[], evAll:[], members:[], events:[], items:[], rsvps:[], reactions:[], privates:{}, openId:null, custom:[], customMissing:false, media:[], mediaMissing:true, photoNotes:[] };
 let B; // backend
 const member = id => (S.allMembers || S.members).find(m => m.id === id);
-const isAdmin = m => !!(m && m.is_admin);
-const admins = () => S.members.filter(isAdmin);
+
+/* ========================= Calendars =========================
+   Everyone has one identity and can be on several calendars (Family, Church, Pickleball…). On each calendar they're a
+   contributor (adds things) or a viewer (looks only); admins manage its people. Each event belongs to one calendar, and
+   the bar color on a card is that calendar's color (your own pick, or the calendar's). */
+const CAL_COLORS = ['#ff6b4a', '#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1'];
+const CAL_EMOJI = ['🏡', '⛪', '🙌', '🏓', '💼', '🎓', '⚽', '🏊', '🎵', '🏕️', '✈️', '📅'];
+const cal = id => S.cals.find(c => c.id === id);
+const calColor = id => { const c = cal(id); return (c && (c.my_color || c.color)) || '#94a3b8'; };
+const calName = id => cal(id)?.name || 'Calendar';
+const calEmoji = id => cal(id)?.emoji || '📅';
+const canWrite = id => cal(id)?.role === 'contributor';
+const writableCals = () => S.cals.filter(c => c.role === 'contributor');
+const calShown = id => cal(id)?.shown !== false;
+const evColor = v => calColor(v && v.family_id);
+const multiCal = () => S.cals.length > 1;
+const cmRow = (calId, mid) => S.cm.find(r => r.family_id === calId && r.member_id === mid);
+function calPeople(id, withRemoved){                     // people on a calendar, each with their membership as ._cm
+  return S.cm.filter(r => r.family_id === id && (withRemoved || !r.removed_at))
+    .map(r => { const m = member(r.member_id); return m ? { ...m, _cm:r } : null; }).filter(Boolean);
+}
+const contributorsOf = id => calPeople(id).filter(m => m._cm.role === 'contributor');
+const isAdmin = (m, calId) => !!(m && (m._cm ? m._cm.is_admin : cmRow(calId, m.id)?.is_admin));
+const admins = calId => calPeople(calId).filter(m => m._cm.is_admin);
+// Shown calendars, plus anything you were @tagged on even if its calendar is hidden
+const inView = e => calShown(e.family_id) || (e.invitees || []).includes(S.me?.id);
+function applyView(){
+  S.events = S.evAll.filter(inView);
+  const ids = new Set(S.cm.filter(r => !r.removed_at && calShown(r.family_id)).map(r => r.member_id));
+  S.members = (S.allMembers || []).filter(m => ids.has(m.id));
+  if(S.me && !S.members.some(m => m.id === S.me.id)) S.members.unshift(S.me);
+}
+function defaultCal(){                                    // where new things go unless you pick another calendar
+  const w = writableCals(); let last = null; try{ last = localStorage.getItem('famcal-lastcal'); }catch(e){}
+  return (w.find(c => c.id === last) || w.find(c => c.shown !== false) || w[0] || {}).id || null;
+}
 function view(ev){ const p = S.privates[ev.id]; return p ? {...ev, title:p.title, notes:p.notes, place:p.place, sticker:p.sticker} : ev; }
 const isSecret = ev => ev.kind === 'private' || !!ev.is_private;
 const hidden = ev => isSecret(ev) && ev.owner_id !== S.me?.id && !(ev.invitees || []).includes(S.me?.id);
-// One family-wide featured list (stored on the family, so featuring another replaces it). Private lists never qualify.
-function featuredList(){ const id = S.family?.featured_list; const e = id && S.events.find(x => x.id === id);
-  return e && e.kind === 'list' && !isSecret(e) ? e : null; }
-const isFeatured = v => !!v && S.family?.featured_list === v.id && !isSecret(v);
-function featuredCard(max){ const e = featuredList(); if(!e) return ''; const keep = cardMax; cardMax = max; const h = card(e); cardMax = keep; return h; }
+// One featured list per calendar (stored on the calendar, so featuring another replaces it). Private lists never qualify.
+function featuredList(calId){
+  if(!calId) return featuredLists()[0] || null;
+  const c = cal(calId), e = c && c.featured_list && (S.evAll || S.events).find(x => x.id === c.featured_list);
+  return e && e.kind === 'list' && !isSecret(e) ? e : null;
+}
+const featuredLists = () => S.cals.filter(c => calShown(c.id)).map(c => featuredList(c.id)).filter(Boolean);
+const isFeatured = v => !!v && cal(v.family_id)?.featured_list === v.id && !isSecret(v);
+function featuredCard(max, e){ e = e || featuredList(); if(!e) return ''; const keep = cardMax; cardMax = max; const h = card(e); cardMax = keep; return h; }
 async function setFeatured(id, on){
-  const prev = featuredList();
-  try{ await B.updateFamily({ featured_list: on ? id : null }); await refresh(); }
+  const calId = (S.evAll.find(x => x.id === id) || {}).family_id, prev = featuredList(calId);
+  try{ await B.updateCalendar(calId, { featured_list: on ? id : null }); await refresh(); }
   catch(e){ return toast('⚠️ ' + (/featured_list|column/.test(e.message) ? 'Run the latest schema.sql in Supabase to feature lists' : e.message)); }
   const v = view(S.events.find(x => x.id === id) || {});
   toast(on ? `⭐ ${v.title || 'List'} is featured${prev && prev.id !== id ? ` (instead of ${view(prev).title})` : ''}` : 'No longer featured');
@@ -1230,11 +1315,11 @@ function occursOn(e, d){
   if(e.repeat_until && d > e.repeat_until) return false;
   if((e.repeat_skip || []).includes(d)) return false;
   if(!ruleHits(e, d)) return false;
-  return !S.events.some(x => x.series_id === e.id && x.series_date === d);      // changed just this once
+  return !(S.evAll || S.events).some(x => x.series_id === e.id && x.series_date === d);      // changed just this once
 }
-function eventsOn(d){
+function eventsOn(d, src){
   const out = [];
-  for(const e of S.events){
+  for(const e of (src || S.events)){
     if(!e.repeat){ if(e.starts_on === d) out.push(e); }
     else if(occursOn(e, d)) out.push({ ...e, starts_on:d, _occ:d });
   }
@@ -1273,11 +1358,17 @@ function LocalBackend(){
   const KEY = 'famcal-demo-v1';
   let db = null; try{ db = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
   if(!db) db = seed();
+  if(!db.cals){                                          // demo saved before calendars existed
+    db.cals = [{ ...db.family, emoji:'🏡', color:'#ff6b4a', allow_join:true }];
+    db.cm = db.members.map(m => ({ family_id:db.family.id, member_id:m.id, role:'contributor', is_admin:!!m.is_admin, color:null, shown:true, removed_at:m.removed_at || null }));
+    if(!db.cm.some(r => r.is_admin)) db.cm[0].is_admin = true;
+  }
+  db.links = db.links || [];
   const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} };
   save();
   function seed(){
     const t = todayStr(), now = new Date().toISOString();
-    const M = [{id:'m1',name:'Dad',emoji:'🧔',color:'#3b82f6',is_admin:true},{id:'m2',name:'Mom',emoji:'👩',color:'#ec4899'},{id:'m3',name:'Ava',emoji:'👧',color:'#10b981'},{id:'m4',name:'Sam',emoji:'👦',color:'#f59e0b'}];
+    const M = [{id:'m1',name:'Dad',emoji:'🧔',color:'#3b82f6'},{id:'m2',name:'Mom',emoji:'👩',color:'#ec4899'},{id:'m3',name:'Ava',emoji:'👧',color:'#10b981'},{id:'m4',name:'Sam',emoji:'👦',color:'#f59e0b'},{id:'m5',name:'Brother Lee',emoji:'👨',color:'#6366f1'}];
     const E = (o) => ({id:uid(), family_id:'f1', notes:null, place:null, start_time:null, end_time:null, sticker:null, invitees:[], created_at:now, ...o});
     const g = E({kind:'list', owner_id:'m2', title:'Groceries', starts_on:null, sticker:'🛒'});
     const pack = E({kind:'list', owner_id:'m1', title:'Camping packing', starts_on:addDays(t,4), sticker:'🏕️'});
@@ -1285,62 +1376,106 @@ function LocalBackend(){
     const date = E({kind:'invite', owner_id:'m2', title:'Date night', starts_on:addDays(t,3), start_time:'19:00', sticker:'❤️', invitees:['m1'], notes:'Sitter is booked 🙌'});
     const bday = E({kind:'info', owner_id:'m2', title:"Sam's birthday", starts_on:addDays(t,5), sticker:'🎂', countdown:true});
     const trip = E({kind:'info', owner_id:'m1', title:'Disney trip', starts_on:addDays(t,47), sticker:'🏰', countdown:true, notes:'Flight leaves at 7am'});
-    const items = (ev, arr) => arr.map(([text,done],k) => ({id:uid(), event_id:ev.id, family_id:'f1', text, done:!!done, done_by:done?'m2':null, position:k}));
+    const items = (ev, arr) => arr.map(([text,done],k) => ({id:uid(), event_id:ev.id, family_id:ev.family_id, text, done:!!done, done_by:done?'m2':null, position:k}));
+    const wed = (() => { for(let i = 0; i < 7; i++){ const d = addDays(t, i); if(parseYmd(d).getDay() === 3) return d; } return t; })();
     return {
-      meId:'m1', family:{id:'f1', name:'Our Family', code:'DEMO42'}, members:M,
+      meId:'m1', members:M,
+      cals:[{id:'f1', name:'Our Family', code:'DEMO42', emoji:'🏡', color:'#ff6b4a', allow_join:true, featured_list:null},
+            {id:'f2', name:'Youth', code:'YOUTH7', emoji:'🙌', color:'#6366f1', allow_join:true, featured_list:null}],
+      cm:[...['m1','m2','m3','m4'].map((id, i) => ({family_id:'f1', member_id:id, role:'contributor', is_admin:i === 0, color:null, shown:true, removed_at:null})),
+          {family_id:'f2', member_id:'m1', role:'contributor', is_admin:true, color:null, shown:true, removed_at:null},
+          {family_id:'f2', member_id:'m5', role:'contributor', is_admin:false, color:null, shown:true, removed_at:null},
+          {family_id:'f2', member_id:'m3', role:'viewer', is_admin:false, color:null, shown:true, removed_at:null}],
       events:[g, pack, soccer, date, bday, trip,
         E({kind:'info', owner_id:'m1', title:'Pizza night', starts_on:t, start_time:'18:00', sticker:'🍕'}),
         E({kind:'private', owner_id:'m2', title:'Surprise party planning', starts_on:t, start_time:'14:00', end_time:'15:00', sticker:'🎁'}),
         E({kind:'info', owner_id:'m3', title:'Piano lesson', starts_on:addDays(t,2), start_time:'16:00', sticker:'🎹', place:'Ms. Lee’s'}),
+        E({family_id:'f2', kind:'info', owner_id:'m1', title:'Youth activity', starts_on:wed, start_time:'19:00', end_time:'20:30', sticker:'🙌', place:'Church', repeat:'weekly', repeat_days:[3], repeat_skip:[]}),
+        E({family_id:'f2', kind:'invite', owner_id:'m1', title:'Leaders meeting', starts_on:addDays(t,6), start_time:'07:00', sticker:'📋', invitees:['m5']}),
       ],
       items:[...items(g,[['Milk'],['Eggs'],['Bananas'],['Tortillas'],['Bread',1]]), ...items(pack,[['Tent'],['Sleeping bags'],['Headlamps',1],['Marshmallows']])],
       rsvps:[{event_id:soccer.id, member_id:'m3', family_id:'f1', status:'yes'}],
       reactions:[{event_id:bday.id, member_id:'m3', family_id:'f1', sticker:'🥳'},{event_id:bday.id, member_id:'m4', family_id:'f1', sticker:'🎉'}],
+      links:[],
     };
   }
+  const mine = () => db.cm.filter(r => r.member_id === db.meId && !r.removed_at);
+  const myCalIds = () => new Set(mine().map(r => r.family_id));
+  const evCal = eid => db.events.find(e => e.id === eid)?.family_id;
   function demoAdmin(a){
-    const m = db.members.find(x => x.id === a.id);
-    if(!m || !m.is_admin || m.removed_at) throw Object.assign(new Error('Only a calendar admin can do that'), {pin:true});
+    const r = db.cm.find(x => x.family_id === a.cal && x.member_id === a.id && !x.removed_at);
+    if(!r || !r.is_admin) throw Object.assign(new Error('Only a calendar admin can do that'), {pin:true});
     if(!/^[0-9]{4,6}$/.test(a.pin || '')) throw Object.assign(new Error('Wrong PIN'), {pin:true});
   }
-  if(!db.members.some(m => m.is_admin)){ db.members[0].is_admin = true; save(); }   // demo data saved before admins existed
+  const row = (calId, mid) => db.cm.find(x => x.family_id === calId && x.member_id === mid);
+  const code6 = () => Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
   return {
     mode:'demo',
     async start(){ return db.meId; },
     async load(){
-      return { family:db.family, members:db.members, meId:db.meId, privates:{},
-        events: db.events.filter(e => !(e.is_private && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId)))
-          .map(e => e.kind==='private' && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId) ? {...e, title:null, notes:null, place:null, sticker:null} : e),
-        items:db.items.filter(i => { const e = db.events.find(x => x.id === i.event_id); return !(e && e.is_private && e.owner_id!==db.meId && !(e.invitees||[]).includes(db.meId)); }), rsvps:db.rsvps, reactions:db.reactions, custom:db.custom||[] };
+      const ids = myCalIds(), me = db.meId, priv = e => e.is_private && e.owner_id !== me && !(e.invitees||[]).includes(me);
+      const cals = mine().map(r => { const c = db.cals.find(x => x.id === r.family_id);
+        return { ...c, code: r.role === 'contributor' ? c.code : null, role:r.role, is_admin:r.is_admin, my_color:r.color, shown:r.shown !== false }; }).filter(c => c.id);
+      const cm = db.cm.filter(r => ids.has(r.family_id));
+      const people = new Set([me, ...cm.map(r => r.member_id)]);
+      return { cals, cm, members:db.members.filter(m => people.has(m.id)), meId:me, privates:{},
+        events: db.events.filter(e => ids.has(e.family_id) && !priv(e))
+          .map(e => e.kind==='private' && e.owner_id!==me && !(e.invitees||[]).includes(me) ? {...e, title:null, notes:null, place:null, sticker:null} : e),
+        items:db.items.filter(i => { const e = db.events.find(x => x.id === i.event_id); return e && ids.has(e.family_id) && !priv(e); }),
+        rsvps:db.rsvps.filter(r => ids.has(r.family_id)), reactions:db.reactions.filter(r => ids.has(r.family_id)), custom:(db.custom||[]).filter(c => ids.has(c.family_id || 'f1')) };
     },
-    async addSticker(c){ db.custom = db.custom||[]; if(!db.custom.some(x => x.emoji===c.emoji)) db.custom.push({id:uid(), ...c, created_at:new Date().toISOString()}); else Object.assign(db.custom.find(x => x.emoji===c.emoji), c); save(); },
+    async addSticker(c){ db.custom = db.custom||[]; const f = c.family_id; const x = db.custom.find(y => y.emoji===c.emoji && (y.family_id || 'f1') === f);
+      if(x) Object.assign(x, c); else db.custom.push({id:uid(), ...c, created_at:new Date().toISOString()}); save(); },
     async deleteSticker(id){ db.custom = (db.custom||[]).filter(x => x.id!==id); save(); },
     async patchEvent(id, patch){ Object.assign(db.events.find(x => x.id === id), patch); save(); },
     async saveEvent(ev){
-      if(ev.id){ const i = db.events.findIndex(x => x.id===ev.id); db.events[i] = {...db.events[i], ...ev}; }
-      else { ev = {...ev, id:uid(), family_id:db.family.id, owner_id:db.meId, created_at:new Date().toISOString()}; db.events.push(ev); }
+      if(ev.id){ const i = db.events.findIndex(x => x.id===ev.id); const moved = ev.family_id && ev.family_id !== db.events[i].family_id;
+        db.events[i] = {...db.events[i], ...ev};
+        if(moved) ['items','rsvps','reactions'].forEach(k => db[k].forEach(x => { if(x.event_id === ev.id) x.family_id = ev.family_id; })); }
+      else { ev = {...ev, id:uid(), family_id:ev.family_id || db.cals[0].id, owner_id:db.meId, created_at:new Date().toISOString()}; db.events.push(ev); }
       save(); return ev;
     },
     async deleteEvent(id){ db.events = db.events.filter(e => e.id!==id && e.series_id!==id); ['items','rsvps','reactions'].forEach(k => db[k] = db[k].filter(x => x.event_id!==id)); save(); },
-    async addItems(eid, texts){ const base = Date.now(); texts.forEach((t,k) => db.items.push({id:uid(), event_id:eid, family_id:db.family.id, text:t, done:false, done_by:null, position:base+k})); save(); },
+    async addItems(eid, texts){ const base = Date.now(); texts.forEach((t,k) => db.items.push({id:uid(), event_id:eid, family_id:evCal(eid), text:t, done:false, done_by:null, position:base+k})); save(); },
     async setItem(id, patch){ const it = db.items.find(i => i.id===id); if(it) Object.assign(it, patch); save(); },
     async deleteItem(id){ db.items = db.items.filter(i => i.id!==id); save(); },
-    async setRsvp(eid, status){ db.rsvps = db.rsvps.filter(r => !(r.event_id===eid && r.member_id===db.meId)); if(status) db.rsvps.push({event_id:eid, member_id:db.meId, family_id:db.family.id, status}); save(); },
-    async setReaction(eid, st, on){ db.reactions = db.reactions.filter(r => !(r.event_id===eid && r.member_id===db.meId && r.sticker===st)); if(on) db.reactions.push({event_id:eid, member_id:db.meId, family_id:db.family.id, sticker:st}); save(); },
+    async setRsvp(eid, status){ db.rsvps = db.rsvps.filter(r => !(r.event_id===eid && r.member_id===db.meId)); if(status) db.rsvps.push({event_id:eid, member_id:db.meId, family_id:evCal(eid), status}); save(); },
+    async setReaction(eid, st, on){ db.reactions = db.reactions.filter(r => !(r.event_id===eid && r.member_id===db.meId && r.sticker===st)); if(on) db.reactions.push({event_id:eid, member_id:db.meId, family_id:evCal(eid), sticker:st}); save(); },
     async updateMe(p){ Object.assign(db.members.find(m => m.id===db.meId), p); save(); },
-    async updateFamily(p){ Object.assign(db.family, p); save(); },   // featured_list lives on the family too
+    async updateCalendar(calId, p){ Object.assign(db.cals.find(c => c.id === calId), p); save(); },     // time zone, featured list
+    async setCalPrefs(calId, p){ Object.assign(row(calId, db.meId), p); save(); },                       // your color, show / hide
+    async createCalendar(c){ const id = uid(); db.cals.push({id, name:c.name, emoji:c.emoji || '📅', color:c.color || CAL_COLORS[db.cals.length % 8], code:code6(), allow_join:true, featured_list:null});
+      db.cm.push({family_id:id, member_id:db.meId, role:'contributor', is_admin:true, color:null, shown:true, removed_at:null}); save(); return { family_id:id }; },
+    async joinCalendar(code){ const c = db.cals.find(x => x.code === code.toUpperCase().trim()); if(!c) throw new Error('Calendar code not found');
+      const r = row(c.id, db.meId); if(r && r.removed_at) throw new Error('An admin took you off this calendar. Ask them to add you back.');
+      if(r) r.role = 'contributor'; else db.cm.push({family_id:c.id, member_id:db.meId, role:'contributor', is_admin:false, color:null, shown:true, removed_at:null}); save(); return { family_id:c.id, name:c.name }; },
+    async leaveCalendar(calId){ const r = row(calId, db.meId);
+      if(r.is_admin && !db.cm.some(x => x.family_id === calId && x.is_admin && !x.removed_at && x.member_id !== db.meId))
+        throw new Error(db.cm.some(x => x.family_id === calId && !x.removed_at && x.member_id !== db.meId) ? 'Make someone else an admin first' : 'You’re the only one on it. Delete the calendar instead.');
+      Object.assign(r, {removed_at:new Date().toISOString(), is_admin:false}); save(); },
+    async linkPreview(){ return null; },
     // demo has no PINs: any 4–6 digits unlock admin; the same safety rules as the database apply
     async adminVerify(a){ demoAdmin(a); },
-    async addMember(m, a){ demoAdmin(a); db.members.push({id:uid(), name:m.name, emoji:m.emoji, color:m.color}); save(); },
-    async removeMember(id, a){ demoAdmin(a); const m = db.members.find(x => x.id === id);
+    async addMember(m, a){ demoAdmin(a); const id = uid(); db.members.push({id, name:m.name, emoji:m.emoji, color:m.color}); db.cm.push({family_id:a.cal, member_id:id, role:'contributor', is_admin:false, color:null, shown:true, removed_at:null}); save(); },
+    async addExisting(mid, role, a){ demoAdmin(a); const r = row(a.cal, mid); if(r && !r.removed_at) throw new Error('Already on this calendar');
+      if(r) Object.assign(r, {removed_at:null, role, is_admin:false}); else db.cm.push({family_id:a.cal, member_id:mid, role, is_admin:false, color:null, shown:true, removed_at:null}); save(); },
+    async removeMember(id, a){ demoAdmin(a); const r = row(a.cal, id);
       if(id === db.meId) throw new Error('This device is signed in as that person. Sign in as someone else first.');
-      if(m.is_admin && db.members.filter(x => x.is_admin && !x.removed_at).length <= 1) throw new Error('Make someone else an admin first');
-      Object.assign(m, {removed_at:new Date().toISOString(), is_admin:false}); save(); },
-    async restoreMember(id, pin, a){ demoAdmin(a); delete db.members.find(x => x.id === id).removed_at; save(); },
-    async setAdmin(id, on, a){ demoAdmin(a); if(!on && !db.members.some(x => x.is_admin && !x.removed_at && x.id !== id)) throw new Error('The family needs at least one admin');
-      db.members.find(x => x.id === id).is_admin = on; save(); },
-    async setAllowJoin(on, a){ demoAdmin(a); db.family.allow_join = on; save(); },
-    async newCode(a){ demoAdmin(a); db.family.code = Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join(''); save(); return db.family.code; },
+      if(r.is_admin && db.cm.filter(x => x.family_id === a.cal && x.is_admin && !x.removed_at).length <= 1) throw new Error('Make someone else an admin first');
+      Object.assign(r, {removed_at:new Date().toISOString(), is_admin:false}); save(); },
+    async restoreMember(id, pin, a){ demoAdmin(a); row(a.cal, id).removed_at = null; save(); },
+    async setAdmin(id, on, a){ demoAdmin(a); const r = row(a.cal, id);
+      if(on && r.role !== 'contributor') throw new Error('Viewers can’t be admins. Let them add things first.');
+      if(!on && !db.cm.some(x => x.family_id === a.cal && x.is_admin && !x.removed_at && x.member_id !== id)) throw new Error('The calendar needs at least one admin');
+      r.is_admin = on; save(); },
+    async setRole(id, role, a){ demoAdmin(a); const r = row(a.cal, id); if(role === 'viewer' && r.is_admin) throw new Error('Take away admin first'); r.role = role; save(); },
+    async setAllowJoin(on, a){ demoAdmin(a); db.cals.find(c => c.id === a.cal).allow_join = on; save(); },
+    async newCode(a){ demoAdmin(a); const c = db.cals.find(x => x.id === a.cal); c.code = code6(); save(); return c.code; },
+    async updateCal(p, a){ demoAdmin(a); Object.assign(db.cals.find(c => c.id === a.cal), p); save(); },
+    async deleteCal(a){ demoAdmin(a); db.cals = db.cals.filter(c => c.id !== a.cal); db.cm = db.cm.filter(r => r.family_id !== a.cal); db.events = db.events.filter(e => e.family_id !== a.cal); save(); },
+    async createLink(label, days, a){ demoAdmin(a); const token = 'demo' + code6(); db.links.push({id:uid(), family_id:a.cal, token, label, expires_at: days > 0 ? new Date(Date.now() + days * 864e5).toISOString() : null, disabled:false, created_at:new Date().toISOString()}); save(); return token; },
+    async listLinks(a){ demoAdmin(a); return db.links.filter(l => l.family_id === a.cal).map(l => ({...l, viewers:[]})).reverse(); },
+    async setLink(id, on, a){ demoAdmin(a); db.links.find(l => l.id === id).disabled = !on; save(); },
     async switchMember(id){ db.meId = id; save(); },
     async reset(){ localStorage.removeItem(KEY); },
     notify(){},
@@ -1363,12 +1498,13 @@ const PHOTO_STORE = {
 function adminOk(r){                         // admin functions answer {ok, error} so a wrong PIN still counts toward the lock
   if(r && r.ok) return r;
   const msg = (r && r.error) || 'Run the latest schema.sql in Supabase to use admin settings';
-  throw Object.assign(new Error(msg), { pin: /Wrong PIN|Too many|Only a calendar admin/.test(msg) });
+  throw Object.assign(new Error(msg), { pin: /Wrong PIN|Too many|Only a calendar admin|not on that calendar/.test(msg) });
 }
 async function fnError(err){ try{ const j = await err.context.json(); return j.error || err.message; }catch(e){ return err.message || 'Notification service unavailable'; } }
 function SupaBackend(){
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { db:{ schema:SCHEMA }, auth:{ persistSession:true, autoRefreshToken:true } });
-  let meId = null, famId = null;
+  let meId = null;
+  const evCal = eid => S.evAll.find(e => e.id === eid)?.family_id;          // every row is filed under its event's calendar
   const ok = ({data, error}) => { if(error) throw new Error(error.message); return data; };
   const rpc = async (fn, args) => ok(await sb.rpc(fn, args));
   return {
@@ -1385,8 +1521,10 @@ function SupaBackend(){
     async claim(code, mid, pin){ const r = await rpc('claim_member', {p_code:code, p_member:mid, p_pin:pin}); if(!r.ok) throw new Error(r.error); meId = r.member_id; return r; },
     async load(){
       const since = addDays(todayStr(), -60);
-      const [fam, members, events, items, rsvps, reactions, privs] = await Promise.all([
-        sb.from('families').select('*').maybeSingle(),
+      const cr = await sb.rpc('my_calendars');
+      if(cr.error) throw new Error(/my_calendars/.test(cr.error.message) ? 'Run the latest schema.sql in Supabase (calendars update)' : cr.error.message);
+      const [cm, members, events, items, rsvps, reactions, privs] = await Promise.all([
+        sb.from('cal_members').select('*'),
         sb.from('members').select('*').order('created_at'),
         sb.from('events').select('*').or(`starts_on.is.null,starts_on.gte.${since}`),
         sb.from('list_items').select('*'),
@@ -1394,36 +1532,35 @@ function SupaBackend(){
         sb.from('reactions').select('*'),
         sb.from('event_private').select('*'),
       ]).then(rs => rs.map(ok));
-      famId = fam?.id;
       const cs = await sb.from('custom_stickers').select('*').order('created_at');   // optional table: app works without it
       const md = await sb.from('media').select('*').order('added_at');                 // optional table: shared photos
       const pc = await sb.from('media_comments').select('*').order('created_at');      // optional table: photo comments
       const privates = {}; (privs||[]).forEach(p => privates[p.event_id] = p);
-      return { family:fam, members, meId,
+      return { cals:cr.data || [], cm, members, meId,
         events: events.map(e => ({...e, start_time:hhmm(e.start_time), end_time:hhmm(e.end_time), invitees:e.invitees||[]})),
         items, rsvps, reactions, privates, custom: cs.error ? [] : cs.data, customMissing: !!cs.error, media: md.error ? null : md.data, photoNotes: pc.error ? [] : pc.data };
     },
-    async addSticker(c){ ok(await sb.from('custom_stickers').upsert({family_id:famId, created_by:meId, emoji:c.emoji, keywords:c.keywords}, {onConflict:'family_id,emoji'})); },
+    async addSticker(c){ ok(await sb.from('custom_stickers').upsert({family_id:c.family_id, created_by:meId, emoji:c.emoji, keywords:c.keywords}, {onConflict:'family_id,emoji'})); },
     async deleteSticker(id){ ok(await sb.from('custom_stickers').delete().eq('id', id)); },
     // ---- shared photos: database row + file in the private bucket (file access only via PHOTO_STORE) ----
     async addPhoto(p){
-      const path = `${famId}/${p.id}.jpg`;
+      const path = `${p.cal}/${p.id}.jpg`;                                  // each calendar's album is its own folder
       await PHOTO_STORE.put(sb, path, p.blob);
-      try{ ok(await sb.from('media').insert({id:p.id, family_id:famId, uploaded_by:meId, path, sha256:p.sha256, bytes:p.blob.size, width:p.width, height:p.height})); }
+      try{ ok(await sb.from('media').insert({id:p.id, family_id:p.cal, uploaded_by:meId, path, sha256:p.sha256, bytes:p.blob.size, width:p.width, height:p.height})); }
       catch(e){ PHOTO_STORE.remove(sb, [path]).catch(()=>{}); throw e; }        // no orphan files when the row is refused (cap, duplicate)
     },
-    async addPhotoComment(mediaId, body){ ok(await sb.from('media_comments').insert({media_id:mediaId, family_id:famId, author_id:meId, body})); },
+    async addPhotoComment(mediaId, body){ ok(await sb.from('media_comments').insert({media_id:mediaId, family_id:S.media.find(m => m.id === mediaId)?.family_id, author_id:meId, body})); },
     async deletePhotoComment(id){ ok(await sb.from('media_comments').delete().eq('id', id)); },
     async removePhoto(row){ ok(await sb.from('media').delete().eq('id', row.id)); await PHOTO_STORE.remove(sb, [row.path]).catch(()=>{}); },
     photoLinks: paths => PHOTO_STORE.links(sb, paths),
     async saveEvent(ev){
       const priv = ev.kind === 'private' || !!ev.is_private;
       const row = { kind:ev.kind, title:priv?null:ev.title, notes:priv?null:ev.notes, place:priv?null:ev.place, sticker:priv?null:ev.sticker,
-        starts_on:ev.starts_on, start_time:ev.start_time, end_time:ev.end_time, invitees:ev.invitees||[], countdown:!!ev.countdown, ...(ev.is_private ? {is_private:true} : (ev.id ? {is_private:false} : {})), updated_at:new Date().toISOString(),
+        starts_on:ev.starts_on, start_time:ev.start_time, end_time:ev.end_time, invitees:ev.invitees||[], countdown:!!ev.countdown, ...(ev.family_id ? {family_id:ev.family_id} : {}), ...(ev.is_private ? {is_private:true} : (ev.id ? {is_private:false} : {})), updated_at:new Date().toISOString(),
         ...(ev.repeat || ev.clearRepeat ? { repeat:ev.repeat || null, repeat_days:ev.repeat_days || null, repeat_until:ev.repeat_until || null } : {}),
         ...(ev.series_id ? { series_id:ev.series_id, series_date:ev.series_date } : {}) };
       let id = ev.id;
-      const write = r => id ? sb.from('events').update(r).eq('id', id) : sb.from('events').insert({...r, family_id:famId, owner_id:meId}).select('id').single();
+      const write = r => id ? sb.from('events').update(r).eq('id', id) : sb.from('events').insert({...r, owner_id:meId}).select('id').single();
       let res = await write(row);
       if(res.error && /is_private|private_has_no_details/.test(res.error.message)) throw new Error('Run the latest schema.sql in Supabase to use private lists');
       if(res.error && /repeat|series_/.test(res.error.message)) throw new Error('Run the latest schema.sql in Supabase to use repeating events');
@@ -1438,27 +1575,40 @@ function SupaBackend(){
     },
     async deleteEvent(id){ ok(await sb.from('events').delete().eq('id', id)); },
     async patchEvent(id, patch){ const r = await sb.from('events').update(patch).eq('id', id); if(r.error && /repeat/.test(r.error.message)) throw new Error('Run the latest schema.sql in Supabase to use repeating events'); ok(r); },
-    async addItems(eid, texts){ const base = Date.now()/1000; ok(await sb.from('list_items').insert(texts.map((t,k) => ({event_id:eid, family_id:famId, text:t, position:base + k/1000})))); },
+    async addItems(eid, texts){ const base = Date.now()/1000; ok(await sb.from('list_items').insert(texts.map((t,k) => ({event_id:eid, family_id:evCal(eid), text:t, position:base + k/1000})))); },
     async setItem(id, patch){ ok(await sb.from('list_items').update(patch).eq('id', id)); },
     async deleteItem(id){ ok(await sb.from('list_items').delete().eq('id', id)); },
     async setRsvp(eid, status){
-      if(status) ok(await sb.from('rsvps').upsert({event_id:eid, member_id:meId, family_id:famId, status, updated_at:new Date().toISOString()}));
+      if(status) ok(await sb.from('rsvps').upsert({event_id:eid, member_id:meId, family_id:evCal(eid), status, updated_at:new Date().toISOString()}));
       else ok(await sb.from('rsvps').delete().eq('event_id', eid).eq('member_id', meId));
     },
     async setReaction(eid, st, on){
-      if(on) ok(await sb.from('reactions').upsert({event_id:eid, member_id:meId, family_id:famId, sticker:st}));
+      if(on) ok(await sb.from('reactions').upsert({event_id:eid, member_id:meId, family_id:evCal(eid), sticker:st}));
       else ok(await sb.from('reactions').delete().eq('event_id', eid).eq('member_id', meId).eq('sticker', st));
     },
     async updateMe(p){ ok(await sb.from('members').update(p).eq('id', meId)); },
-    async updateFamily(p){ ok(await sb.from('families').update(p).eq('id', famId)); },
-    // ---- admin: every call carries an admin's id + PIN; the database checks it each time ----
-    async adminVerify(a){ adminOk(await rpc('admin_verify', {p_admin:a.id, p_admin_pin:a.pin})); },
-    async addMember(m, a){ adminOk(await rpc('add_member', {p_name:m.name, p_emoji:m.emoji, p_color:m.color, p_pin:m.pin, p_admin:a.id, p_admin_pin:a.pin})); },
-    async removeMember(id, a){ adminOk(await rpc('remove_member', {p_admin:a.id, p_admin_pin:a.pin, p_member:id})); },
-    async restoreMember(id, pin, a){ adminOk(await rpc('restore_member', {p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_pin:pin})); },
-    async setAdmin(id, on, a){ adminOk(await rpc('set_admin', {p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_on:on})); },
-    async setAllowJoin(on, a){ adminOk(await rpc('set_allow_join', {p_admin:a.id, p_admin_pin:a.pin, p_on:on})); },
-    async newCode(a){ return adminOk(await rpc('new_family_code', {p_admin:a.id, p_admin_pin:a.pin})).code; },
+    async updateCalendar(calId, p){ ok(await sb.from('families').update(p).eq('id', calId)); },          // time zone, featured list
+    async setCalPrefs(calId, p){ ok(await sb.from('cal_members').update(p).eq('family_id', calId).eq('member_id', meId)); },   // your color, show / hide
+    async createCalendar(c){ return adminOk(await rpc('create_calendar', {p_name:c.name, p_emoji:c.emoji, p_color:c.color})); },
+    async joinCalendar(code){ return adminOk(await rpc('join_calendar', {p_code:code})); },
+    async leaveCalendar(calId){ adminOk(await rpc('leave_calendar', {p_cal:calId})); },
+    linkPreview: token => rpc('link_preview', {p_token:token}),
+    async redeemLink(token, who){ const r = adminOk(await rpc('redeem_view_link', {p_token:token, p_name:who?.name || '', p_emoji:who?.emoji || '', p_color:who?.color || ''})); meId = r.member_id; OB.joined = r.family_id; return r; },
+    // ---- admin: every call names the calendar and carries an admin's id + PIN; the database checks it each time ----
+    async adminVerify(a){ adminOk(await rpc('admin_verify', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin})); },
+    async addMember(m, a){ adminOk(await rpc('add_member', {p_cal:a.cal, p_name:m.name, p_emoji:m.emoji, p_color:m.color, p_pin:m.pin, p_admin:a.id, p_admin_pin:a.pin})); },
+    async addExisting(mid, role, a){ adminOk(await rpc('add_existing', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_member:mid, p_role:role})); },
+    async removeMember(id, a){ adminOk(await rpc('remove_member', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_member:id})); },
+    async restoreMember(id, pin, a){ adminOk(await rpc('restore_member', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_pin:pin})); },
+    async setAdmin(id, on, a){ adminOk(await rpc('set_admin', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_on:on})); },
+    async setRole(id, role, a){ adminOk(await rpc('set_role', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_member:id, p_role:role})); },
+    async setAllowJoin(on, a){ adminOk(await rpc('set_allow_join', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_on:on})); },
+    async newCode(a){ return adminOk(await rpc('new_family_code', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin})).code; },
+    async updateCal(p, a){ adminOk(await rpc('update_calendar', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_name:p.name, p_emoji:p.emoji, p_color:p.color})); },
+    async deleteCal(a){ adminOk(await rpc('delete_calendar', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin})); },
+    async createLink(label, days, a){ return adminOk(await rpc('create_view_link', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_label:label, p_days:days})).token; },
+    async listLinks(a){ return adminOk(await rpc('list_view_links', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin})).links; },
+    async setLink(id, on, a){ adminOk(await rpc('set_view_link', {p_cal:a.cal, p_admin:a.id, p_admin_pin:a.pin, p_link:id, p_on:on})); },
     async signOut(){ await sb.from('devices').delete().eq('user_id', (await sb.auth.getUser()).data.user.id); await sb.auth.signOut(); },
     notify(body){ sb.functions.invoke(PUSH_FN, {body}).then(r => { if(r.error) console.warn('notify', r.error); }).catch(()=>{}); },
     async savePush(sub, prefs){ const j = sub.toJSON(); await rpc('save_push_sub', {p_endpoint:j.endpoint, p_p256dh:j.keys.p256dh, p_auth:j.keys.auth, p_prefs:prefs, p_ua:navigator.userAgent}); },
@@ -1467,7 +1617,7 @@ function SupaBackend(){
     async testPush(){ const r = await sb.functions.invoke(PUSH_FN, {body:{type:'test'}}); if(r.error) throw new Error(await fnError(r.error)); return r.data; },
     subscribe(onChange){
       const ch = sb.channel('famcal-live');
-      ['events','event_private','list_items','rsvps','reactions','members','families','custom_stickers','media','media_comments'].forEach(t =>
+      ['events','event_private','list_items','rsvps','reactions','members','families','cal_members','custom_stickers','media','media_comments'].forEach(t =>
         ch.on('postgres_changes', {event:'*', schema:SCHEMA, table:t}, onChange));
       ch.subscribe();
       document.addEventListener('visibilitychange', () => { if(!document.hidden) onChange(); });
@@ -1478,11 +1628,13 @@ function SupaBackend(){
 /* ========================= Loading ========================= */
 async function refresh(){
   const d = await B.load();
-  Object.assign(S, { family:d.family, allMembers:d.members, members:d.members.filter(m => !m.removed_at), events:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
+  Object.assign(S, { cals:d.cals || [], cm:d.cm || [], allMembers:d.members, evAll:d.events, items:d.items, rsvps:d.rsvps, reactions:d.reactions, privates:d.privates,
     custom:(d.custom||[]).map(c => ({...c, words:(c.keywords||'').split(',').map(w => w.trim()).filter(Boolean)})), customMissing:!!d.customMissing,
     media:d.media || [], mediaMissing: !d.media, photoNotes:d.photoNotes || [] });
-  S.me = S.members.find(m => m.id === d.meId);
+  S.me = (S.allMembers || []).find(m => m.id === d.meId);
   if(!S.me) throw new Error('not-member');
+  S.family = S.cals[0] || null;                          // older single-calendar code paths
+  applyView();
   render();
   if(S.openId) S.events.some(e => e.id===S.openId) ? openDetail(S.openId, true) : closeSheet();
   photoSyncSoon();
@@ -1531,15 +1683,16 @@ function renderSide(){
   const lists = S.events.filter(e => e.kind==='list' && passesFilter(e) && (!e.starts_on || e.starts_on >= addDays(t,-7))).map(view)
     .sort((a,b) => (a.starts_on ? 1 : 0) - (b.starts_on ? 1 : 0) || String(a.starts_on).localeCompare(String(b.starts_on)));
   el.innerHTML = `
-    <div class="brand"><img src="${APP_ICON}" alt=""><b>${esc(S.family?.name || 'Family')}</b>${sharedPhotos() ? '<button class="gear" data-photos aria-label="Family photos" title="Family photos">🖼️</button>' : ''}<button class="gear" data-settings aria-label="Settings" title="Settings">⚙️</button><button data-me aria-label="Me" title="You">${avatar(S.me)}</button></div>
-    <button class="newbtn" data-new>＋ New <kbd>N</kbd></button>
+    <div class="brand"><img src="${APP_ICON}" alt="">${multiCal() ? '' : `<b>${esc(S.cals[0]?.name || 'Calendar')}</b>`}${sharedPhotos() ? '<button class="gear" data-photos aria-label="Family photos" title="Family photos">🖼️</button>' : ''}<button class="gear" data-settings aria-label="Settings" title="Settings">⚙️</button><button data-me aria-label="Me" title="You">${avatar(S.me)}</button></div>
+    ${writableCals().length ? '<button class="newbtn" data-new>＋ New <kbd>N</kbd></button>' : ''}
     <button class="snav ${S.tab==='cal'?'on':''}" data-tab="cal"><span>📅</span>Calendar</button>
     <button class="snav ${S.tab==='lists'?'on':''}" data-tab="lists"><span>☑️</span>Lists<small>${lists.length || ''}</small></button>
     <div class="shd">${esc(sel.toLocaleDateString(undefined,{month:'long', year:'numeric'}))}<span class="spacer"></span><button data-mnav="-1" aria-label="Previous month">‹</button><button data-mnav="1" aria-label="Next month">›</button></div>
     <div class="mini">${mini}</div>
-    ${S.tab === 'cal' && featuredList() ? `<div class="sfeat">${featuredCard(10)}</div>` : ''}
+    ${S.tab === 'cal' ? featuredLists().map(e => `<div class="sfeat">${featuredCard(10, e)}</div>`).join('') : ''}
     ${(() => { const cds = countdowns(); return cds.length ? `<div class="shd">Countdowns</div>${cds.slice(0,6).map(e => { const n = daysUntil(e.starts_on);
-      return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'⏳')}</span><span class="grow">${esc(e.title)}</span><b class="sbcd" style="--c:${esc((member(e.owner_id)||{}).color||'#ff6b4a')}">${n === 0 ? '🎉' : n + 'd'}</b></button>`; }).join('')}` : ''; })()}
+      return `<button class="sbrow" data-open="${e.id}"><span class="ls">${esc(e.sticker||'⏳')}</span><span class="grow">${esc(e.title)}</span><b class="sbcd" style="--c:${esc(evColor(e))}">${n === 0 ? '🎉' : n + 'd'}</b></button>`; }).join('')}` : ''; })()}
+    ${multiCal() ? `<div class="shd">Calendars</div>${S.cals.map(c => `<div class="sbrow calside" style="--c:${esc(calColor(c.id))}"><button class="sbtog ${c.shown !== false ? 'shown' : ''}" data-calchip="${c.id}" aria-pressed="${c.shown !== false}" title="Show / hide"><i class="cdot"></i></button><button class="grow sbname" data-calsheet="${c.id}">${esc(c.emoji || '📅')} ${esc(c.name)}${c.role === 'viewer' ? ' <small>👀</small>' : ''}</button></div>`).join('')}` : ''}
     ${S.members.length > 1 ? `<div class="shd">People${S.filter.size ? '<span class="spacer"></span><button data-clearfilter style="width:auto;padding:0 6px;font-size:12px;color:var(--accent)">Show all</button>' : ''}</div>
       ${S.members.map(m => `<button class="sbrow ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m,'sm')}<span class="grow">${esc(m.name)}${m.id===S.me.id?' <small>(you)</small>':''}</span></button>`).join('')}` : ''}
     ${lists.length ? `<div class="shd">Lists</div>${lists.slice(0,8).map(e => { const it = itemsOf(e.id), left = it.filter(i=>!i.done).length;
@@ -1561,18 +1714,25 @@ function renderTop(){
   let w = '';
   for(let i=0;i<7;i++){
     const d = addDays(start, i), dt = parseYmd(d);
-    const cols = [...new Set(dayEvents(d).map(e => member(e.owner_id)?.color).filter(Boolean))].slice(0,3);
+    const cols = [...new Set(dayEvents(d).map(evColor))].slice(0,3);
     w += `<button class="day ${d===S.sel?'sel':''} ${d===t?'today':''}" data-day="${d}">
       <span class="dw">${dt.toLocaleDateString(undefined,{weekday:'narrow'})}</span><span class="dn">${dt.getDate()}</span>
       <span class="dots">${cols.map(c => `<i style="--c:${c}"></i>`).join('')}</span></button>`;
   }
   $('#week').innerHTML = w;
   $('#week').classList.toggle('hidden', S.tab !== 'cal');
-  $('#filters').innerHTML = S.members.length > 1 ? S.members.map(m =>
-    `<button class="fchip ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m)}${esc(firstName(m.name))}</button>`).join('') : '';
+  $('#filters').innerHTML = (multiCal() ? S.cals.map(c =>                  // calendars first: tap to show / hide
+    `<button class="fchip calchip ${c.shown !== false ? 'shown' : ''}" style="--c:${esc(calColor(c.id))}" data-calchip="${c.id}" aria-pressed="${c.shown !== false}"><i class="cdot"></i>${esc(c.emoji || '📅')} ${esc(c.name)}</button>`).join('') + '<span class="fsep"></span>' : '')
+    + (S.members.length > 1 ? S.members.map(m =>
+    `<button class="fchip ${S.filter.has(m.id)?'on':''}" style="--c:${esc(m.color)}" data-filter="${m.id}">${avatar(m)}${esc(firstName(m.name))}</button>`).join('') : '');
+  $('#addBtn').classList.toggle('hidden', !writableCals().length);
 }
 
+const noCalHTML = () => `<div class="nocal"><span class="big">📅</span><h2>You’re not on a calendar yet</h2>
+  <p class="hint">Start one for your family, team or group — or join one with its code.</p>
+  <div class="btns" style="justify-content:center"><button class="btn primary" data-newcal>＋ New calendar</button><button class="btn" data-joincal>Join with a code</button></div></div>`;
 function renderMain(){
+  if(!S.cals.length){ $('#main').innerHTML = noCalHTML(); return; }
   if(isDesk()) return renderDesk();
   cardMax = 6;
   let h = '';
@@ -1587,7 +1747,7 @@ function renderMain(){
     h += `<div class="dayhead"><h2>${dayLabel(S.sel)}</h2><span>${shortDate(S.sel)}</span>${wxDayTag(S.sel)}</div>`;
     h += dayList(S.sel, `<div class="empty"><span class="big">🌤️</span>Nothing planned.<br>
       <button class="try" data-try="Pizza night 6pm @everyone">Try “Pizza night 6pm @everyone” 🍕</button></div>`);
-    h += featuredList() ? `<div class="featslot">${featuredCard(8)}</div>` : '';      // the featured list sits between the day and what's coming up
+    h += featuredLists().map(e => `<div class="featslot">${featuredCard(8, e)}</div>`).join('');      // featured lists sit between the day and what's coming up
     const up = [];
     for(let i=1; i<=21 && up.length<6; i++) dayEvents(addDays(S.sel,i)).forEach(e => up.length<6 && up.push(e));
     if(up.length) h += `<div class="sub">Coming up</div>` + up.map(rowHTML).join('');
@@ -1602,8 +1762,8 @@ function renderMain(){
 
 function countdownStrip(){
   const cds = countdowns(); if(!cds.length) return '';
-  return `<div class="cds">${cds.map(e => { const n = daysUntil(e.starts_on), o = member(e.owner_id) || {color:'#ff6b4a'};
-    return `<button class="cd" style="--c:${esc(o.color)}" data-open="${e.id}">${e.sticker ? `<span class="cds-st">${esc(e.sticker)}</span>` : ''}
+  return `<div class="cds">${cds.map(e => { const n = daysUntil(e.starts_on);
+    return `<button class="cd" style="--c:${esc(evColor(e))}" data-open="${e.id}">${e.sticker ? `<span class="cds-st">${esc(e.sticker)}</span>` : ''}
       ${n === 0 ? '<b>🎉</b><small>Today!</small>' : `<b>${n}</b><small>day${n>1?'s':''} to go</small>`}<span class="ct">${esc(e.title)}</span></button>`; }).join('')}</div>`;
 }
 function renderDesk(){
@@ -1645,12 +1805,12 @@ function layoutDay(evs){
   return out;
 }
 const KIND_STK = {info:'💬', invite:'📨', list:'☑️', private:'🔒'};
-const stickerOf = v => v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`) || KIND_STK[v.kind] || '🗓️';
+const stickerOf = v => v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`, v.family_id || null) || KIND_STK[v.kind] || '🗓️';
 function chipHTML(ev, withTime){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'};
-  if(hidden(v)) return `<div class="chip busy" style="--c:${esc(o.color)}" title="${esc(busyNames(v).text)}">🔒 ${esc(busyNames(v).text)}</div>`;
+ if(hidden(v)) return `<div class="chip busy" style="--c:${esc(evColor(v))}" title="${esc(busyNames(v).text)}">🔒 ${esc(busyNames(v).text)}</div>`;
   const extra = v.kind === 'list' ? (() => { const it = itemsOf(v.id); return ` <small>${it.filter(i=>i.done).length}/${it.length}</small>`; })() : '';
-  return `<button class="chip" style="--c:${esc(o.color)}" ${openAttr(v)} title="${esc(v.title)}"><span class="ce">${esc(stickerOf(v))}</span><span class="cx">${withTime && v.start_time ? `<b>${esc(fmtTime(v.start_time).replace(/:00/,''))}</b> ` : ''}${esc(v.title || 'Untitled')}${extra}</span></button>`;
+  return `<button class="chip" style="--c:${esc(evColor(v))}" ${openAttr(v)} title="${esc(v.title)}"><span class="ce">${esc(stickerOf(v))}</span><span class="cx">${withTime && v.start_time ? `<b>${esc(fmtTime(v.start_time).replace(/:00/,''))}</b> ` : ''}${esc(v.title || 'Untitled')}${extra}</span></button>`;
 }
 function weekGrid(){
   const ws = weekStart(S.sel), t = todayStr(), days = [...Array(7)].map((_, i) => addDays(ws, i));
@@ -1665,7 +1825,7 @@ function weekGrid(){
       const v = view(e), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
       const top = s / 60 * HOUR_PX, ht = Math.max((en - s) / 60 * HOUR_PX - 2, 20), w = 100 / lanes;
       const short = ht < 40, narrow = lanes > 1;
-      return `<${hid ? 'div' : 'button'} class="wv-ev ${hid ? 'busy' : ''} ${short ? 'short' : ''} ${narrow ? 'narrow' : ''}" title="${hid ? '' : esc(v.title || '')}" style="--c:${esc(o.color)};top:${top}px;height:${ht}px;left:calc(${lane*w}% + 2px);width:calc(${w}% - 4px)" ${hid ? '' : `${openAttr(v)}`}>
+      return `<${hid ? 'div' : 'button'} class="wv-ev ${hid ? 'busy' : ''} ${short ? 'short' : ''} ${narrow ? 'narrow' : ''}" title="${hid ? '' : esc(v.title || '')}" style="--c:${esc(evColor(v))};top:${top}px;height:${ht}px;left:calc(${lane*w}% + 2px);width:calc(${w}% - 4px)" ${hid ? '' : `${openAttr(v)}`}>
         ${hid ? `<span class="t">🔒 ${esc(busyNames(v).text)}</span>`
               : `<span class="st">${esc(stickerOf(v))}</span><span class="in"><span class="t">${esc(v.title || 'Untitled')}</span><span class="tm">${esc(fmtRange(v.start_time, v.end_time))}${v.place && !short ? ' · ' + esc(v.place) : ''}</span></span>`}
       </${hid ? 'div' : 'button'}>`;
@@ -1721,14 +1881,15 @@ function card(ev){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'};
   const withDay = S.tab === 'lists';
   if(hidden(v)){
-    return `<div class="card busy" style="--c:${esc(o.color)}"><div class="when">${esc(whenText(v, withDay))}</div>
+    return `<div class="card busy" style="--c:${esc(evColor(v))}"><div class="when">${esc(whenText(v, withDay))}</div>
       <div class="ttl">🔒 ${esc(busyNames(v).text)}</div><div class="meta"><span class="people">${busyNames(v).ids.map(id => avatar(member(id),'sm')).join('')}</span><span>Private</span></div></div>`;
   }
-  let h = `<div class="card${isFeatured(v) ? ' feat' : ''}" style="--c:${esc(o.color)}" ${openAttr(v)}>${isFeatured(v) ? '<div class="feattag">⭐ Featured list</div>' : ''}`;
-  { const st = v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`); if(st) h += `<button class="sticker" data-react="${esc(st)}" data-id="${v.id}" title="React with ${esc(st)}" aria-label="React with ${esc(st)}">${esc(st)}</button>`; }
+  let h = `<div class="card${isFeatured(v) ? ' feat' : ''}" style="--c:${esc(evColor(v))}" ${openAttr(v)}>${isFeatured(v) ? '<div class="feattag">⭐ Featured list</div>' : ''}`;
+  { const st = v.sticker || autoSticker(`${v.title || ''} ${v.place || ''}`, v.family_id || null); if(st) h += canWrite(v.family_id) ? `<button class="sticker" data-react="${esc(st)}" data-id="${v.id}" title="React with ${esc(st)}" aria-label="React with ${esc(st)}">${esc(st)}</button>` : `<span class="sticker">${esc(st)}</span>`; }
   h += `<div class="when">${esc(whenText(v, withDay))}${v.repeat ? ' · 🔁' : ''}${wxEventTag(v)}${isSecret(v) ? (v.invitees?.length ? ' · 🔒 private' : ' · 🔒 only you') : ''}${hasCountdown(v) ? `<span class="cdb">⏳ ${cdShort(daysUntil(v.starts_on))}</span>` : ''}</div><div class="ttl">${esc(v.title || 'Untitled')}</div>`;
   const meta = [];
   meta.push(avatar(o,'sm'));
+  if(multiCal()) meta.push(`<span class="caltag" style="--c:${esc(evColor(v))}">${esc(calEmoji(v.family_id))} ${esc(calName(v.family_id))}</span>`);
   if(v.place) meta.push(`<span>📍 ${esc(v.place)}</span>`);
   if(v.invitees?.length){
     meta.push(`<span class="people">${v.invitees.map(id => { const m = member(id); return m ? `<span class="av sm ${asksRsvp(v) ? (rsvpOf(v,id)||'') : ''}" style="--c:${esc(m.color)}">${esc(m.emoji)}</span>` : ''; }).join('')}</span>`);
@@ -1746,10 +1907,10 @@ function card(ev){
 }
 
 function listHTML(v, max){
-  const it = itemsOf(v.id), shown = max ? it.slice(0, max) : it;
-  let h = `<ul class="items">${shown.map(i => `<li class="${i.done?'done':''}"><button class="chk" data-check="${i.id}" aria-label="Check">${i.done?'✓':''}</button><span class="itx">${esc(i.text)}</span>${max ? '' : `<button class="x" data-delitem="${i.id}" aria-label="Remove">✕</button>`}</li>`).join('')}</ul>`;
+  const it = itemsOf(v.id), shown = max ? it.slice(0, max) : it, ro = !canWrite(v.family_id);       // viewers look, they don't tick
+  let h = `<ul class="items">${shown.map(i => `<li class="${i.done?'done':''}"><${ro ? 'span' : 'button'} class="chk" ${ro ? '' : `data-check="${i.id}"`} aria-label="Check">${i.done?'✓':''}</${ro ? 'span' : 'button'}><span class="itx">${esc(i.text)}</span>${max || ro ? '' : `<button class="x" data-delitem="${i.id}" aria-label="Remove">✕</button>`}</li>`).join('')}</ul>`;
   if(max && it.length > max) h += `<div class="more">+${it.length - max} more</div>`;
-  h += `<div class="addline" data-stop><span>＋</span><input placeholder="Add item" data-additem="${v.id}" enterkeyhint="done" autocomplete="off"></div>`;
+  if(!ro) h += `<div class="addline" data-stop><span>＋</span><input placeholder="Add item" data-additem="${v.id}" enterkeyhint="done" autocomplete="off"></div>`;
   return h;
 }
 
@@ -1761,9 +1922,9 @@ function reactsHTML(v, onCard){
     const people = x.who.map(member).filter(Boolean);
     const faces = people.slice(0, 3).map(m => esc(m.emoji)).join('') + (people.length > 3 ? `+${people.length - 3}` : '');
     const pop = S.lastReact === v.id + ':' + st ? ' pop' : '';
-    return `<button class="rc${x.me ? ' me' : ''}${pop}" data-react="${esc(st)}" data-id="${v.id}" title="${esc(people.map(m => firstName(m.name)).join(', '))}">${esc(st)}<i>${faces}</i></button>`;
+    return `<button class="rc${x.me ? ' me' : ''}${pop}" ${canWrite(v.family_id) ? `data-react="${esc(st)}" data-id="${v.id}"` : ''} title="${esc(people.map(m => firstName(m.name)).join(', '))}">${esc(st)}<i>${faces}</i></button>`;
   }).join('');
-  if(!onCard) return `<div class="reacts">${chips}</div>`;
+  if(!onCard || !canWrite(v.family_id)) return chips ? `<div class="reacts">${chips}</div>` : '';
   const open = S.reactOpen === v.id;
   return `<div class="reacts">${chips}<button class="addr${open ? ' on' : ''}" data-reactpick="${v.id}" aria-label="Add a reaction">${open ? '✕' : '＋😀'}</button></div>`
     + (open ? `<div class="rtray">${REACT.map(st => `<button data-react="${st}" data-id="${v.id}">${st}</button>`).join('')}</div>` : '');
@@ -1887,7 +2048,7 @@ function dayList(d, empty){                             // the day's cards, with
 }
 function pastRow(ev){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
-  return `<div class="prow" ${hid ? '' : `${openAttr(v)}`} style="--c:${esc(o.color)}"><span class="pt">${esc(fmtTime(v.start_time))}</span>
+  return `<div class="prow" ${hid ? '' : `${openAttr(v)}`} style="--c:${esc(evColor(v))}"><span class="pt">${esc(fmtTime(v.start_time))}</span>
     <span class="ps">${hid ? '🔒' : esc(stickerOf(v))}</span><b>${hid ? esc(busyNames(v).text) : esc(v.title || 'Untitled')}</b><span class="pk">✓</span></div>`;
 }
 let pastSig = '';                                       // re-draw today's view only when something has just finished
@@ -1901,7 +2062,7 @@ document.addEventListener('click', e => { if(e.target.closest && e.target.closes
 
 function rowHTML(ev){
   const v = view(ev), o = member(v.owner_id) || {color:'#999'}, hid = hidden(v);
-  return `<div class="row" ${hid ? '' : `${openAttr(v)}`} style="--c:${esc(o.color)}"><span class="bar"></span><span class="rs">${hid ? '🔒' : esc(stickerOf(v))}</span>
+  return `<div class="row" ${hid ? '' : `${openAttr(v)}`} style="--c:${esc(evColor(v))}"><span class="bar"></span><span class="rs">${hid ? '🔒' : esc(stickerOf(v))}</span>
     <span class="rt"><b>${hid ? esc(busyNames(v).text) : esc(v.title)}</b><small>${esc(dateLabel(v.starts_on))} · ${esc(fmtRange(v.start_time, v.end_time))}</small></span>${avatar(o,'sm')}</div>`;
 }
 
@@ -1924,13 +2085,15 @@ function openDetail(id, quiet, occ){
   if(hasCountdown(v)){ const n = daysUntil(v.starts_on), o2 = member(v.owner_id) || {color:'#ff6b4a'};
     h += n === 0 ? `<div class="cdbig" style="--c:${esc(o2.color)}"><b>🎉</b><span>It’s today!</span></div>`
       : `<div class="cdbig" style="--c:${esc(o2.color)}"><b>${n}</b><span>day${n>1?'s':''} to go${cdWeeks(n) ? `<small>${cdWeeks(n)}</small>` : ''}</span></div>`; }
-  h += `<div class="tray" data-stop>${REACT.map(s => `<button class="${myR.has(s)?'on':''}" data-react="${s}" data-id="${id}">${s}</button>`).join('')}</div>`;
+  if(canWrite(v.family_id)) h += `<div class="tray" data-stop>${REACT.map(s => `<button class="${myR.has(s)?'on':''}" data-react="${s}" data-id="${id}">${s}</button>`).join('')}</div>`;
+  else h += `<div class="hint" style="margin:6px 2px 0">👀 You can view ${esc(calName(v.family_id))}, but not change it.</div>`;
   h += reactsHTML(v);
   h += `<div class="drow"><span class="ic">🗓️</span><span>${v.starts_on ? esc(shortDate(v.starts_on)) + ' · ' + esc(fmtRange(v.start_time, v.end_time)) : 'Anytime'}</span></div>`;
   if(v.repeat) h += `<div class="drow"><span class="ic">🔁</span><span>${esc(repeatLabel(ev0))}</span></div>`;
   else if(v.series_id) h += `<div class="drow"><span class="ic">🔁</span><span>Changed just this once${S.events.find(x => x.id === v.series_id) ? ` · usual: ${esc(repeatLabel(S.events.find(x => x.id === v.series_id)))}` : ''}</span></div>`;
   if(v.place) h += `<div class="drow"><span class="ic">📍</span><a href="https://maps.apple.com/?q=${encodeURIComponent(v.place)}" target="_blank" rel="noopener">${esc(v.place)}</a></div>`;
   h += `<div class="drow"><span class="ic">${avatar(o,'sm')}</span><span>Added by ${esc(mine ? 'you' : o.name)}</span></div>`;
+  if(multiCal()) h += `<div class="drow"><span class="ic" style="color:${esc(evColor(v))}">●</span><span>${esc(calEmoji(v.family_id))} ${esc(calName(v.family_id))}</span></div>`;
   if(v.invitees?.length){
     h += `<div class="drow" style="flex-wrap:wrap"><span class="ic">👥</span>${v.invitees.map(mid => { const m = member(mid); if(!m) return ''; const r = asksRsvp(v) ? rsvpOf(v, mid) : null;
       return `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:10px">${avatar(m,'sm')}${esc(firstName(m.name))}${r==='yes'?' ✅':r==='no'?' ❌':asksRsvp(v)?' ⏳':''}</span>`; }).join('')}</div>`;
@@ -1948,7 +2111,7 @@ function openDetail(id, quiet, occ){
   h += `</div>`;
   if(v.kind === 'list') h += isSecret(v)
     ? `<div class="hint" style="margin:10px 2px 0">🔒 Private lists can’t be featured.</div>`
-    : `<button class="tog ${isFeatured(v) ? 'on' : ''}" data-feature="${id}" style="margin-top:8px"><span>⭐</span><div style="flex:1">Feature on the calendar${featuredList() && !isFeatured(v) ? `<small class="togsub">Replaces “${esc(view(featuredList()).title)}”</small>` : `<small class="togsub">Shows on everyone’s calendar and the wall display</small>`}</div><i class="sw"></i></button>`;
+    : canWrite(v.family_id) ? `<button class="tog ${isFeatured(v) ? 'on' : ''}" data-feature="${id}" style="margin-top:8px"><span>⭐</span><div style="flex:1">Feature on ${multiCal() ? esc(calName(v.family_id)) : 'the calendar'}${featuredList(v.family_id) && !isFeatured(v) ? `<small class="togsub">Replaces “${esc(view(featuredList(v.family_id)).title)}”</small>` : `<small class="togsub">Shows on everyone’s calendar and the wall display</small>`}</div><i class="sw"></i></button>` : '';
   if(mine && !v.repeat && v.starts_on && daysUntil(v.starts_on) >= 0) h += `<button class="tog ${v.countdown ? 'on' : ''}" data-cdtoggle="${id}" style="margin-top:8px"><span>⏳</span>Show a countdown<i class="sw"></i></button>`;
   if(quiet && $('#sheet').classList.contains('on')){ const sc = $('#sheet').scrollTop; $('#sheet').innerHTML = `<div class="grab"></div>` + h; $('#sheet').scrollTop = sc; }
   else openSheet(h);
@@ -1967,6 +2130,7 @@ function downloadIcs(id){
 /* ========================= Composer ========================= */
 let C = null;
 function openComposer(opts = {}){            // on a shared screen, ask who is writing first
+  if(!writableCals().length) return toast(S.cals.length ? '👀 You can view these calendars but not add to them' : 'Start or join a calendar first');
   penGate(() => openComposerNow(opts), opts.id ? S.events.find(e => e.id === opts.id)?.owner_id : null);
 }
 function openComposerNow(opts = {}){
@@ -1976,6 +2140,7 @@ function openComposerNow(opts = {}){
         bDate: ev ? ev.starts_on : S.sel, bStart: ev?.start_time || opts.start || null, bEnd: ev?.end_time || null,
         sticker: ev?.sticker || null, stickerManual: !!ev, countdown: !!ev?.countdown, cdManual: !!ev, listPrivate: !!ev?.is_private,
         scope: opts.scope || null, occ: opts.occ || null, mRep: undefined, mUntil: undefined,
+        bCal: ev ? ev.family_id : (opts.cal || defaultCal()), mCal: undefined, curCal: null,
         bRep: ev?.repeat ? { repeat:ev.repeat, days:ev.repeat_days || null, until:ev.repeat_until || null } : null,
         noRepeat: !!ev?.series_id || opts.scope === 'one' };
   if(ev && opts.scope === 'one'){ C.bDate = opts.occ; C.bRep = null; }                  // a one-off change on that date
@@ -1998,17 +2163,20 @@ function closeComposer(){ closeStickerAdd(); if(!$('#sheet').classList.contains(
 
 function draft(){
   const text = $('#cText').value;
+  const pc = parseQuick(text, {kind:C.kind, noDateTime:true}).cal;              // a typed +Calendar wins over the menu
+  const calId = (C.scope === 'one' ? C.bCal : pc || C.mCal || C.bCal) || defaultCal();
+  C.curCal = calId;
   let p;
   if(C.editing){
     // Editing: words already in the title (e.g. "Sunday school") must not move the event,
     // but a day or time the person types now should be picked up.
-    const a = parseQuick(text, {kind:C.kind}), o = C.origDT || {};
+    const a = parseQuick(text, {kind:C.kind, cal:calId}), o = C.origDT || {};
     const useDate = !!a.date && a.date !== o.date;
     const useTime = !!a.start && (a.start !== o.start || a.end !== o.end);
-    p = parseQuick(text, {kind:C.kind, noDate:!useDate, noTime:!useTime});
+    p = parseQuick(text, {kind:C.kind, cal:calId, noDate:!useDate, noTime:!useTime});
     if(useDate && C.mDate !== undefined) C.mDate = undefined;                       // newest input wins
     if(useTime && C.mStart !== undefined){ C.mStart = undefined; C.mEnd = undefined; }
-  } else p = parseQuick(text, {kind:C.kind});
+  } else p = parseQuick(text, {kind:C.kind, cal:calId});
   let kind = C.kind;
   if(!C.kindManual) kind = p.listLike ? 'list' : p.people.length ? 'invite' : 'info';
   const extra = $('#cItems').value.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
@@ -2030,7 +2198,7 @@ function draft(){
   const sticker = C.stickerManual ? C.sticker : autoSticker(title + ' ' + (p.place||''));
   const countdown = !!date && !rep && (C.cdManual ? C.countdown : COUNTDOWN_RE.test(title));
   const isPrivate = kind === 'list' && !!C.listPrivate;
-  return { _p:p, rep, isPrivate, countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
+  return { _p:p, cal:calId, rep, isPrivate, countdown, kind, title, date, start, end, people: p.people, place:p.place, items:[...p.items, ...extra], sticker, notes:$('#cNotes').value.trim() || null };
 }
 
 function updateComposer(){
@@ -2045,7 +2213,10 @@ function updateComposer(){
   renderHighlights(d); renderLive(d);
   // pills
   const dateLbl = d.date ? (d.date===todayStr() ? 'Today' : d.date===addDays(todayStr(),1) ? 'Tomorrow' : shortDate(d.date)) : 'No date';
-  let p = `<label class="p ${d.date?'':'off'}">📅 ${esc(dateLbl)}<input type="date" id="cDate" value="${d.date||''}"></label>`;
+  let p = '';
+  const wc = writableCals();
+  if(wc.length > 1 && C.scope !== 'one') p += `<label class="p calp" style="--c:${esc(calColor(d.cal))}">${esc(calEmoji(d.cal))} ${esc(calName(d.cal))}<select id="cCal" aria-label="Calendar">${wc.map(c => `<option value="${c.id}" ${c.id === d.cal ? 'selected' : ''}>${esc(c.emoji || '📅')} ${esc(c.name)}</option>`).join('')}</select></label>`;
+  p += `<label class="p ${d.date?'':'off'}">📅 ${esc(dateLbl)}<input type="date" id="cDate" value="${d.date||''}"></label>`;
   if(d.date){
     p += `<label class="p ${d.start?'':'off'}">🕒 ${d.start ? esc(fmtTime(d.start)) : 'All day'}<input type="time" id="cStart" value="${d.start||''}" step="300"></label>`;
     if(d.start) p += `<label class="p ${d.end?'':'off'}">${d.end ? 'until ' + esc(fmtTime(d.end)) : '+ end'}<input type="time" id="cEnd" value="${d.end||''}" step="300"></label>`;
@@ -2065,7 +2236,7 @@ function updateComposer(){
   if(d.kind === 'list') p += `<button class="p ${d.isPrivate ? 'cdp' : 'off'}" id="cListPriv">🔒 ${d.isPrivate ? 'Private list' : 'Private'}</button>`;
   if(d.date && !d.rep) p += `<button class="p ${d.countdown ? 'cdp' : 'off'}" id="cCountdown">⏳ ${d.countdown ? (daysUntil(d.date) >= 0 ? cdShort(daysUntil(d.date)) + ' to go' : 'Countdown') : 'Countdown'}</button>`;
   if(d.place) p += `<span class="p">📍 ${esc(d.place)}</span>`;
-  if(d.people.length) p += `<span class="p">${d.people.map(id => avatar(member(id),'sm')).join('')} ${d.people.length===S.members.length ? 'Everyone' : d.people.map(id => esc(firstName(member(id)?.name))).join(', ')}</span>`;
+  if(d.people.length) p += `<span class="p">${d.people.map(id => avatar(member(id),'sm')).join('')} ${d.people.length===contributorsOf(d.cal).length && d.people.length > 1 ? 'Everyone' : d.people.map(id => esc(firstName(member(id)?.name))).join(', ')}</span>`;
   $('#cPills').innerHTML = p;
   // quick dates
   const t = todayStr(); const q = [[t,'Today'],[addDays(t,1),'Tmrw']];
@@ -2081,7 +2252,7 @@ function updateComposer(){
   $('#cItemsLbl').textContent = C.editing ? 'Add more items' : (d.items.length ? `Items (${d.items.length})` : 'Items');
   // stickers
   const auto = C.stickerManual ? null : d.sticker;
-  const mine = (S.custom||[]).map(c => c.emoji);
+  const mine = customFor(d.cal).map(c => c.emoji);
   const all = [...new Set([...mine, ...STICKERS])];
   const list = d.sticker && !all.includes(d.sticker) ? [d.sticker, ...all] : all;
   $('#cStk').innerHTML = list.map(s => `<button class="${s===d.sticker?'on':''} ${s===auto?'auto':''} ${mine.includes(s)?'fam':''}" data-stk="${s}">${s}</button>`).join('')
@@ -2149,7 +2320,7 @@ function renderLive(d){
   sug.classList.toggle('hidden', !show);
   if(show) sug.innerHTML = stickerSuggestions(d).map(e => `<button class="${e === st ? 'on' : ''}" data-stksug="${esc(e)}">${esc(e)}</button>`).join('')
     + `<button class="more" id="cStkMore" aria-label="All stickers">${$('#cStkAll').classList.contains('hidden') ? '⋯' : '✕'}</button>`;
-  $('#cWhoAv').innerHTML = S.members.slice(0, 3).map(m => `<i style="--c:${esc(m.color)}">${esc(m.emoji)}</i>`).join('');
+  $('#cWhoAv').innerHTML = contributorsOf(d.cal).slice(0, 3).map(m => `<i style="--c:${esc(m.color)}">${esc(m.emoji)}</i>`).join('');
 }
 function toggleAllStickers(force){
   const el = $('#cStkAll'), open = force ?? el.classList.contains('hidden');
@@ -2199,18 +2370,19 @@ function whenChips(){
 
 // ---------- the event type explains itself ----------
 const KIND_LINE = {
-  info:   {ic:'💬', name:'For the family', desc:'Everyone can see it'},
+  info:   {ic:'💬', name:'For everyone', desc:'Everyone on the calendar can see it'},
   invite: {ic:'📨', name:'Invite',         desc:'Tagged people can say I’m in'},
   private:{ic:'🔒', name:'Private',        desc:'Others just see “busy”'},
   list:   {ic:'☑️', name:'List',           desc:'Checklist the family can tick off'},
 };
 function kindReason(d){
-  const names = d.people.length === S.members.length && S.members.length > 1 ? 'everyone'
+  const pool = contributorsOf(d.cal), names = d.people.length === pool.length && pool.length > 1 ? 'everyone'
     : d.people.map(id => firstName(member(id)?.name)).filter(Boolean).join(' & ');
   if(d.kind === 'invite') return names ? `because you tagged ${names}` : 'tag who’s invited with @';
   if(d.kind === 'list') return C.kindManual ? (d.isPrivate ? 'only people you @tag can see it' : 'put items after a “:” or below') : 'because you listed items after a “:”';
   if(d.kind === 'private') return names ? `only you${d.people.length > 1 ? ',' : ' and'} ${names} can see what it is` : 'only you can see what it is';
-  return C.kindManual ? 'everyone in the family can see it' : 'everyone sees it · tap to change';
+  const who = multiCal() ? `everyone on ${calName(d.cal)}` : 'everyone';
+  return C.kindManual ? `${who} can see it` : `${who} sees it · tap to change`;
 }
 function renderKindLine(d){
   const K = KIND_LINE[d.kind];
@@ -2249,7 +2421,8 @@ async function saveComposer(){
   const d = draft();
   if(!(d.title || d.items.length)){ $('#cText').classList.add('shake'); setTimeout(() => $('#cText').classList.remove('shake'), 500); return; }
   const btn = $('#cSave'); btn.disabled = true;
-  const ev = { id:C.id || undefined, is_private:d.isPrivate, countdown:d.countdown, kind:d.kind, title:d.title || 'Untitled', notes:d.notes, place:d.place || null, starts_on:d.date,
+  try{ localStorage.setItem('famcal-lastcal', d.cal); }catch(e){}
+  const ev = { id:C.id || undefined, family_id:d.cal, is_private:d.isPrivate, countdown:d.countdown, kind:d.kind, title:d.title || 'Untitled', notes:d.notes, place:d.place || null, starts_on:d.date,
     start_time:d.start, end_time:d.end, sticker:d.sticker || null, invitees:d.people };
   if(d.rep){ Object.assign(ev, { repeat:d.rep.repeat, repeat_days:(d.rep.repeat === 'weekly' || d.rep.repeat === 'biweekly') ? (d.rep.days && d.rep.days.length ? d.rep.days : [dowOf(d.date)]) : null, repeat_until:d.rep.until || null, countdown:false }); }
   else if(C.bRep && C.scope !== 'one') Object.assign(ev, { repeat:null, repeat_days:null, repeat_until:null, clearRepeat:true });
@@ -2292,13 +2465,15 @@ async function saveCustomSticker(){
   const words = cleanWords($('#nsWords').value);
   $('#nsSave').disabled = true;
   try{
-    await B.addSticker({emoji, keywords:words.join(', ')});
+    await B.addSticker({emoji, keywords:words.join(', '), family_id:draft().cal});
     closeStickerAdd(); await refresh();
     C.sticker = emoji; C.stickerManual = true; updateComposer();
-    toast(`${emoji} Added for the family${words.length ? ' · auto-picks “' + words[0] + '”' : ''}`);
+    toast(`${emoji} Added for ${multiCal() ? calName(draft().cal) : 'the family'}${words.length ? ' · auto-picks “' + words[0] + '”' : ''}`);
   }catch(e){ $('#nsSave').disabled = false; toast('⚠️ ' + e.message); }
 }
 function stickersSection(){
+  if(multiCal() && S.custom.length) return writableCals().map(c => { const list = customFor(c.id); return list.length ? `<div class="hint" style="margin:8px 2px 2px;font-weight:800">${esc(c.emoji || '📅')} ${esc(c.name)}</div>`
+    + list.map(x => `<div class="mrow"><span class="fs">${esc(x.emoji)}</span><span style="flex:1;color:var(--muted);font-weight:600">${x.words.length ? esc(x.words.join(', ')) : 'No auto-pick words'}</span><button class="pill" data-delstk="${x.id}" aria-label="Remove">✕</button></div>`).join('') : ''; }).join('');
   if(!S.custom.length) return `<p class="hint" style="margin:0 2px">Add your own with the ＋ at the end of the sticker picker when you create an event.</p>`;
   return S.custom.map(c => `<div class="mrow"><span class="fs">${esc(c.emoji)}</span><span style="flex:1;color:var(--muted);font-weight:600">${c.words.length ? esc(c.words.join(', ')) : 'No auto-pick words'}</span><button class="pill" data-delstk="${c.id}" aria-label="Remove">✕</button></div>`).join('');
 }
@@ -2460,128 +2635,276 @@ function openMe(){                              // the avatar button: just you (
   const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'me' ? $('#sheet').scrollTop : 0;
   openSheet(h); $('#sheet').dataset.panel = 'me'; $('#sheet').scrollTop = keep;
 }
-function openSettings(){                        // the ⚙️ button: this device, the family, and the locked admin area
-  const me = S.me, ad = admins();
+function calRow(c){                                     // one calendar in Settings: tap to open, switch to show / hide
+  const badge = c.is_admin ? 'Admin' : c.role === 'viewer' ? '👀 View only' : '';
+  return `<div class="calrow" style="--c:${esc(calColor(c.id))}"><button class="calopen" data-calsheet="${c.id}"><i class="cdot"></i><span class="ce">${esc(c.emoji || '📅')}</span><b>${esc(c.name)}</b>${badge ? `<span class="kindtag">${badge}</span>` : ''}<span class="chev">›</span></button>
+    <label class="sw2" title="Show on my calendar"><input type="checkbox" data-calshown="${c.id}" ${c.shown !== false ? 'checked' : ''}><i></i></label></div>`;
+}
+function openSettings(){                        // the ⚙️ button: your calendars, this device, stickers
   let h = `<h3 class="sheeth">⚙️ Settings</h3>
+    <div class="lbl">📅 Calendars</div>
+    ${S.cals.map(calRow).join('') || '<div class="hint" style="margin:0 2px 8px">You’re not on any calendar yet.</div>'}
+    <div class="btns" style="margin-top:8px"><button class="btn" data-newcal>＋ New calendar</button><button class="btn" data-joincal>Join with a code</button></div>
     <div class="lbl">Notifications</div>${pushSection()}
     <div class="lbl">🌤️ Weather</div>${weatherSection()}
     <div class="lbl">Shared display</div>${ssSection()}
-    <div class="lbl">Family stickers</div>${stickersSection()}
-    <div class="lbl">${esc(S.family?.name || 'Family')} · invite code</div>
-    <div class="codebox"><b>${esc(S.family?.code || '')}</b><button class="pill" id="shareCode">Share</button></div>
-    <div class="hint" style="margin:6px 2px 0">${S.family?.allow_join === false ? 'Family members use this code to sign in on a new phone. New people can’t join with it right now; an admin adds them.' : 'Family members use this code to sign in on a new phone, and new people can use it to join.'}</div>
-    <div class="lbl">Family</div>
-    ${S.members.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}</b>${isAdmin(m) ? '<span class="kindtag">Admin</span>' : ''}${m.id===me.id ? '<span class="kindtag">You</span>' : (B.mode==='demo' ? `<button class="pill" data-viewas="${m.id}">View as</button>` : '')}</div>`).join('')}
-    <div class="lbl">🔒 Admin</div>
-    <div class="admincard"><div><b>Add or remove people</b><div class="hint" style="margin:2px 0 0">Needs an admin’s PIN${ad.length ? ` (${ad.map(m => esc(firstName(m.name))).join(', ')})` : ''}.</div></div>
-      <button class="btn" data-admin>${adminOpen() ? '🔓 Open' : 'Unlock'}</button></div>`;
+    <div class="lbl">Custom stickers</div>${stickersSection()}`;
+  if(B.mode === 'demo') h += `<div class="lbl">Demo</div><div class="hint" style="margin:0 2px 6px">See the app as someone else:</div>
+    <div class="demoas">${(S.allMembers || []).map(m => `<button class="pill ${m.id === S.me.id ? 'on' : ''}" data-viewas="${m.id}">${avatar(m, 'sm')} ${esc(firstName(m.name))}</button>`).join('')}</div>`;
   h += B.mode === 'demo'
     ? `<div class="btns"><button class="btn danger" id="resetDemo">Reset demo</button></div>`
     : `<div class="btns"><button class="btn danger" id="signOut">Sign out on this ${ssCfg().display ? 'screen' : 'phone'}</button></div>`;
   const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'settings' ? $('#sheet').scrollTop : 0;
   openSheet(h); $('#sheet').dataset.panel = 'settings'; $('#sheet').scrollTop = keep;
 }
-function reopenSettings(){ const p = $('#sheet').dataset.panel; if(p === 'me') openMe(); else if(p === 'settings') openSettings(); else if(p === 'admin') openAdmin(); }
+function reopenSettings(){ const p = $('#sheet').dataset.panel; if(p === 'me') openMe(); else if(p === 'settings') openSettings(); else if(p === 'admin') openAdmin(); else if(p === 'cal') openCalSheet(S.calOpen); }
 
-/* ========================= Admin (proof of identity) =========================
-   Protected changes need an admin's PIN. It's checked by the database on EVERY change (not just here),
-   so the lock can't be skipped. Unlocking doesn't change who this device is signed in as, so it works on
-   the shared display too. It locks again after 3 minutes without an admin change, or when the screensaver starts. */
-const ADMIN = { id:null, pin:'', until:0, pick:null };
+/* ---------- One calendar: your settings for it, its people, its code ---------- */
+function openCalSheet(id){
+  const c = cal(id); if(!c) return openSettings();
+  S.calOpen = id;
+  const people = calPeople(id), ad = people.filter(m => m._cm.is_admin);
+  const role = c.is_admin ? 'You’re an admin' : c.role === 'viewer' ? 'You can look but not add or change things' : 'You can add and change things';
+  let h = `<button class="pill" data-settings>‹ Settings</button>
+    <h3 class="sheeth" style="margin-top:10px"><span style="color:${esc(calColor(id))}">●</span> ${esc(c.emoji || '📅')} ${esc(c.name)}</h3>
+    <div class="hint" style="margin:0 2px 10px">${role}</div>
+    <label class="ssrow"><span>Show on my calendar</span><input type="checkbox" data-calshown="${id}" ${c.shown !== false ? 'checked' : ''}></label>
+    <div class="lbl">Its color for you</div>
+    <div class="colors">${CAL_COLORS.map(x => `<button class="${x === calColor(id) ? 'on' : ''}" style="--c:${x}" data-calcolor="${x}" data-cal="${id}"></button>`).join('')}</div>`;
+  if(c.code) h += `<div class="lbl">Invite code</div>
+    <div class="codebox"><b>${esc(c.code)}</b><button class="pill" data-sharecode="${id}">Share</button></div>
+    <div class="hint" style="margin:6px 2px 0">${c.allow_join === false ? 'People already on it use this code to sign in on a new phone. New people can’t join with it right now; an admin adds them.' : 'People on it use this code to sign in on a new phone, and new people can use it to join and add things.'}</div>`;
+  h += `<div class="lbl">People</div>
+    ${people.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}</b>${m._cm.is_admin ? '<span class="kindtag">Admin</span>' : ''}${m._cm.role === 'viewer' ? '<span class="kindtag">👀 Viewer</span>' : ''}${m.id === S.me.id ? '<span class="kindtag">You</span>' : ''}</div>`).join('')}`;
+  if(c.role === 'contributor') h += `<div class="lbl">🔒 Admin</div>
+    <div class="admincard"><div><b>People, viewer links &amp; code</b><div class="hint" style="margin:2px 0 0">Needs an admin’s PIN${ad.length ? ` (${ad.map(m => esc(firstName(m.name))).join(', ')})` : ''}.</div></div>
+      <button class="btn" data-admin="${id}">${adminOpen(id) ? '🔓 Open' : 'Unlock'}</button></div>`;
+  h += `<div class="btns"><button class="btn danger" data-leavecal="${id}">Leave this calendar</button></div>`;
+  const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'cal' ? $('#sheet').scrollTop : 0;
+  openSheet(h); $('#sheet').dataset.panel = 'cal'; $('#sheet').scrollTop = keep;
+}
+function openNewCal(err){
+  const st = S.newCal = S.newCal || { emoji:'🙌', color:CAL_COLORS[S.cals.length % CAL_COLORS.length] };
+  const name = $('#ncName')?.value || '';
+  openSheet(`<button class="pill" data-settings>‹ Settings</button><h3 class="sheeth" style="margin-top:10px">＋ New calendar</h3>
+    <p class="hint" style="margin:0 2px 10px">For a team, a church group, a club, your own work… You’ll be its admin and get a code to share.</p>
+    <input class="field" id="ncName" maxlength="40" placeholder="Name (e.g. Youth, Swim team, Pickleball)" value="${esc(name)}">
+    <div class="lbl">Sticker</div><div class="emojis">${CAL_EMOJI.map(x => `<button class="${x === st.emoji ? 'on' : ''}" data-ncemoji="${x}">${x}</button>`).join('')}</div>
+    <div class="lbl">Color</div><div class="colors">${CAL_COLORS.map(x => `<button class="${x === st.color ? 'on' : ''}" style="--c:${x}" data-nccolor="${x}"></button>`).join('')}</div>
+    <div class="err">${esc(err || '')}</div>
+    <div class="btns"><button class="btn primary" data-ncsave>Create</button></div>`);
+  $('#sheet').dataset.panel = 'newcal';
+}
+function openJoinCal(err){
+  openSheet(`<button class="pill" data-settings>‹ Settings</button><h3 class="sheeth" style="margin-top:10px">Join a calendar</h3>
+    <p class="hint" style="margin:0 2px 10px">Enter the 6-letter code someone on it shared with you.</p>
+    <input class="field code" id="jcCode" maxlength="6" autocapitalize="characters" autocomplete="off" value="${esc(S.joinCode || '')}">
+    <div class="err">${esc(err || '')}</div>
+    <div class="btns"><button class="btn primary" data-jcgo>Join</button></div>`);
+  $('#sheet').dataset.panel = 'joincal';
+  setTimeout(() => $('#jcCode')?.focus(), 80);
+}
+async function setCalPrefs(id, p){
+  const c = cal(id); Object.assign(c, p.shown !== undefined ? { shown:p.shown } : {}, p.color !== undefined ? { my_color:p.color } : {});
+  applyView(); render();
+  try{ await B.setCalPrefs(id, p); }catch(e){ toast('⚠️ ' + e.message); }
+  refresh().catch(()=>{});
+}
+document.addEventListener('click', async e => {
+  const t = e.target.closest && e.target.closest('[data-calsheet],[data-calcolor],[data-newcal],[data-joincal],[data-ncemoji],[data-nccolor],[data-ncsave],[data-jcgo],[data-leavecal],[data-sharecode],[data-calchip]'); if(!t) return;
+  const d = t.dataset;
+  if(d.calsheet) openCalSheet(d.calsheet);
+  else if(d.calcolor){ await setCalPrefs(d.cal, { color:d.calcolor }); openCalSheet(d.cal); }
+  else if(d.newcal !== undefined){ S.newCal = null; openNewCal(); }
+  else if(d.joincal !== undefined) openJoinCal();
+  else if(d.ncemoji){ S.newCal.emoji = d.ncemoji; openNewCal(); }
+  else if(d.nccolor){ S.newCal.color = d.nccolor; openNewCal(); }
+  else if(d.ncsave !== undefined){
+    const name = ($('#ncName').value || '').trim(); if(!name) return openNewCal('Give it a name');
+    t.disabled = true;
+    try{ const r = await B.createCalendar({ name, emoji:S.newCal.emoji, color:S.newCal.color }); await refresh(); toast(`${S.newCal.emoji} ${name} is ready — share its code to invite people`); openCalSheet(r.family_id); }
+    catch(err){ openNewCal(/create_calendar/.test(err.message) ? 'Run the latest schema.sql in Supabase first' : err.message); }
+  }
+  else if(d.jcgo !== undefined){
+    const code = ($('#jcCode').value || '').trim().toUpperCase(); if(code.length < 4) return openJoinCal('Enter the code');
+    t.disabled = true;
+    try{ const r = await B.joinCalendar(code); S.joinCode = ''; await refresh(); toast(r.already ? 'You’re already on it' : `🎉 You joined ${calName(r.family_id)}`); openCalSheet(r.family_id); }
+    catch(err){ S.joinCode = code; openJoinCal(err.message); }
+  }
+  else if(d.leavecal){ const c = cal(d.leavecal);
+    if(!confirm(`Leave ${c.name}?\n\nYou won't see it anymore. Things you added stay on it.`)) return;
+    try{ await B.leaveCalendar(c.id); await refresh(); toast(`You left ${c.name}`); openSettings(); }catch(err){ toast('⚠️ ' + err.message); } }
+  else if(d.sharecode){ const c = cal(d.sharecode); if(!c?.code) return;
+    const url = location.origin + location.pathname + '?code=' + c.code, text = `Join “${c.name}” on our calendar app 📅 Code: ${c.code}`;
+    if(navigator.share) navigator.share({ title:c.name, text, url }).catch(()=>{});
+    else navigator.clipboard?.writeText(text + ' ' + url).then(() => toast('📋 Copied'), () => toast(url)); }
+  else if(d.calchip){ setCalPrefs(d.calchip, { shown:!calShown(d.calchip) }); }
+});
+document.addEventListener('change', e => { if(e.target.dataset && e.target.dataset.calshown){ setCalPrefs(e.target.dataset.calshown, { shown:e.target.checked }); } });
+document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id === 'jcCode'){ e.preventDefault(); document.querySelector('[data-jcgo]')?.click(); } });
+
+/* ========================= Admin (proof of identity), per calendar =========================
+   Protected changes need a PIN from an admin of that calendar. The database checks it on EVERY change (not just here),
+   so the lock can't be skipped. Unlocking doesn't change who this device is signed in as, so it works on the shared
+   display too. It locks again after 3 minutes without an admin change, or when the screensaver starts. */
+const ADMIN = { cal:null, id:null, pin:'', until:0, pick:null };
 const ADMIN_MS = 3 * 60000;
-const adminOpen = () => !!ADMIN.id && Date.now() < ADMIN.until && isAdmin(member(ADMIN.id));
+const adminOpen = calId => !!ADMIN.id && (!calId || ADMIN.cal === calId) && Date.now() < ADMIN.until && !!cmRow(ADMIN.cal, ADMIN.id)?.is_admin;
+const adminCred = () => ({ cal:ADMIN.cal, id:ADMIN.id, pin:ADMIN.pin });
 function adminLock(quiet){ const was = !!ADMIN.id; Object.assign(ADMIN, { id:null, pin:'', until:0 }); if(was && !quiet) toast('🔒 Admin locked'); }
-function openAdminGate(err){
-  if(adminOpen()) return openAdmin();
-  const ad = admins();
+function openAdminGate(err, calId){
+  calId = calId || ADMIN.cal || S.calOpen;
+  if(adminOpen(calId)) return openAdmin();
+  if(ADMIN.cal !== calId){ adminLock(true); ADMIN.cal = calId; }
+  const ad = admins(calId);
   if(!ad.length) return toast('⚠️ Run the latest schema.sql in Supabase to use admin settings');
   if(!ad.some(m => m.id === ADMIN.pick)) ADMIN.pick = (ad.find(m => m.id === S.me.id) || ad[0]).id;
   const a = member(ADMIN.pick);
-  openSheet(`<h3 class="sheeth">🔒 Admin</h3>
-    <p style="color:var(--muted);margin:6px 0 8px">Adding or removing people needs an admin’s PIN.</p>
+  openSheet(`<h3 class="sheeth">🔒 ${esc(calEmoji(calId))} ${esc(calName(calId))} admin</h3>
+    <p style="color:var(--muted);margin:6px 0 8px">Managing people needs an admin’s PIN.</p>
     ${ad.length > 1 ? `<div class="who">${ad.map(m => `<button class="${m.id === ADMIN.pick ? 'on' : ''}" data-adminpick="${m.id}">${avatar(m, 'lg')}${esc(firstName(m.name))}</button>`).join('')}</div>`
       : `<div style="text-align:center">${avatar(a, 'lg')}<div style="font-weight:800;margin-top:4px">${esc(a.name)}</div></div>`}
     <input class="field" id="adminPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="${B.mode === 'demo' ? 'Any 4 digits in the demo' : esc(firstName(a.name)) + '’s PIN'}" style="text-align:center;letter-spacing:.4em;font-size:24px;margin-top:12px">
     <div class="err">${esc(err || '')}</div>
-    <div class="btns"><button class="btn" data-settings>Back</button><button class="btn primary" data-adminunlock>Unlock</button></div>`);
+    <div class="btns"><button class="btn" data-calsheet="${calId}">Back</button><button class="btn primary" data-adminunlock>Unlock</button></div>`);
   $('#sheet').dataset.panel = 'admingate';
   setTimeout(() => { const i = $('#adminPin'); i && i.focus(); }, 80);
 }
 async function adminUnlock(btn){
   const pin = ($('#adminPin').value || '').trim(); if(!pin) return openAdminGate('Enter the PIN');
   btn.disabled = true;
-  try{ await B.adminVerify({ id:ADMIN.pick, pin }); }catch(e){ return openAdminGate(e.message); }
-  Object.assign(ADMIN, { id:ADMIN.pick, pin, until:Date.now() + ADMIN_MS }); openAdmin();
+  try{ await B.adminVerify({ cal:ADMIN.cal, id:ADMIN.pick, pin }); }catch(e){ return openAdminGate(e.message); }
+  Object.assign(ADMIN, { id:ADMIN.pick, pin, until:Date.now() + ADMIN_MS }); S.links = null; openAdmin();
 }
-async function adminDo(fn, okMsg){              // run one protected change with the unlocked admin's PIN
+async function adminDo(fn, okMsg, after){       // run one protected change with the unlocked admin's PIN
   if(!adminOpen()){ adminLock(true); return openAdminGate('Locked after a few minutes. Enter the PIN again.'); }
-  try{ const r = await fn({ id:ADMIN.id, pin:ADMIN.pin }); ADMIN.until = Date.now() + ADMIN_MS; await refresh(); if(okMsg) toast(okMsg); openAdmin(); return r; }
+  try{ const r = await fn(adminCred()); ADMIN.until = Date.now() + ADMIN_MS; await refresh(); if(okMsg) toast(okMsg); (after || openAdmin)(r); return r; }
   catch(e){ if(e.pin){ adminLock(true); return openAdminGate(e.message); } toast('⚠️ ' + e.message); }
 }
-function openAdmin(){
+const linkUrl = tok => location.origin + location.pathname + '?view=' + encodeURIComponent(tok);
+function linkLine(l){
+  const exp = l.expires_at ? new Date(l.expires_at) : null, expired = exp && exp < new Date(), on = !l.disabled && !expired;
+  const when = !exp ? 'never expires' : expired ? 'expired ' + exp.toLocaleDateString(undefined, { month:'short', day:'numeric' }) : 'until ' + exp.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  return `<div class="linkrow ${on ? '' : 'off'}"><div style="flex:1;min-width:0"><b>👀 ${esc(l.label || 'Viewer link')}</b>
+      <small>${esc(when)} · ${(l.viewers || []).length ? esc((l.viewers || []).join(', ')) : 'nobody yet'}</small></div>
+    ${on ? `<button class="pill" data-linkshare="${esc(l.token)}">Share</button>` : ''}
+    ${expired ? '' : `<label class="sw2" title="${on ? 'Turn off' : 'Turn on'}"><input type="checkbox" data-linkon="${l.id}" ${on ? 'checked' : ''}><i></i></label>`}</div>`;
+}
+async function openAdmin(){
   if(!adminOpen()) return openAdminGate();
-  const a = member(ADMIN.id), gone = (S.allMembers || []).filter(m => m.removed_at), open = S.family?.allow_join !== false;
+  const id = ADMIN.cal, c = cal(id), a = member(ADMIN.id);
+  const people = calPeople(id), gone = calPeople(id, true).filter(m => m._cm.removed_at), open = c.allow_join !== false;
+  const others = (S.allMembers || []).filter(m => !people.some(p => p.id === m.id) && !gone.some(g => g.id === m.id) && S.cm.some(r => r.member_id === m.id && !r.removed_at && r.family_id !== id));
+  if(!S.links || S.links.cal !== id){ try{ S.links = { cal:id, list: await B.listLinks(adminCred()) }; }catch(e){ S.links = { cal:id, list:[] }; } }
   const keep = $('#sheet').classList.contains('on') && $('#sheet').dataset.panel === 'admin' ? $('#sheet').scrollTop : 0;
-  openSheet(`<div class="adminbar"><h3 class="sheeth" style="flex:1">🔓 Admin</h3><span class="hint" style="margin:0">${avatar(a, 'sm')} ${esc(firstName(a.name))}</span><button class="pill" data-adminlock>🔒 Lock</button></div>
-    <div class="lbl">People with access</div>
-    ${S.members.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}${m.id === S.me.id ? ' <small class="hint">(this device)</small>' : ''}</b>
-      <button class="pill ${isAdmin(m) ? 'on' : ''}" data-setadmin="${m.id}" aria-pressed="${isAdmin(m)}">${isAdmin(m) ? '⭐ Admin' : 'Make admin'}</button>
-      ${m.id === S.me.id ? '' : `<button class="pill danger" data-rmmember="${m.id}">Remove</button>`}</div>`).join('')}
-    <button class="btn" style="width:100%;margin-top:8px" id="addKid">＋ Add someone without a phone</button>
+  openSheet(`<div class="adminbar"><h3 class="sheeth" style="flex:1">🔓 ${esc(c.emoji || '📅')} ${esc(c.name)}</h3><span class="hint" style="margin:0">${avatar(a, 'sm')} ${esc(firstName(a.name))}</span><button class="pill" data-adminlock>🔒 Lock</button></div>
+    <div class="lbl">People</div>
+    ${people.map(m => { const r = m._cm, viewer = r.role === 'viewer';
+      return `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}${m.id === S.me.id ? ' <small class="hint">(this device)</small>' : ''}</b>
+      ${viewer ? '' : `<button class="pill ${r.is_admin ? 'on' : ''}" data-setadmin="${m.id}" aria-pressed="${r.is_admin}">${r.is_admin ? '⭐ Admin' : 'Make admin'}</button>`}
+      ${r.is_admin ? '' : `<button class="pill" data-setrole="${m.id}" title="${viewer ? 'Let them add things' : 'Make them view only'}">${viewer ? '👀 Viewer' : '✏️ Adds'}</button>`}
+      ${m.id === S.me.id ? '' : `<button class="pill danger" data-rmmember="${m.id}">Remove</button>`}</div>`; }).join('')}
+    <div class="btns" style="margin-top:8px"><button class="btn" id="addKid">＋ Someone without a phone</button>${others.length ? '<button class="btn" data-addother>＋ From your other calendars</button>' : ''}</div>
     ${gone.length ? `<div class="lbl">Removed</div>
     ${gone.map(m => `<div class="mrow" style="opacity:.75">${avatar(m)}<b style="flex:1">${esc(m.name)}</b><button class="pill" data-restore="${m.id}">Give access again</button></div>`).join('')}` : ''}
+    <div class="lbl">👀 Viewer links</div>
+    <div class="hint" style="margin:0 2px 8px">Read-only links (great for grandparents). Anyone with the link can look, but not add or change anything. Turn a link off and everyone who used it loses access.</div>
+    ${(S.links.list || []).map(linkLine).join('')}
+    <div class="newlink"><input class="field" id="nlLabel" maxlength="40" placeholder="Who it’s for (e.g. Grandma)"><select id="nlDays" aria-label="Expires"><option value="7">1 week</option><option value="30">1 month</option><option value="90">3 months</option><option value="365">1 year</option><option value="0" selected>Never expires</option></select>
+      <button class="btn" data-newlink>＋ Make link</button></div>
     <div class="lbl">Invite code</div>
     <label class="ssrow adminrow"><span>New people can join with the code</span><input type="checkbox" id="adminJoin" ${open ? 'checked' : ''}></label>
-    <div class="hint" style="margin:4px 0 0">${open ? 'Anyone who has the code can add themselves to the family.' : 'Only an admin can add people. Family members can still sign in on a new phone with the code and their PIN.'}</div>
-    <div class="codebox" style="margin-top:10px"><b>${esc(S.family?.code || '')}</b><button class="pill" id="adminNewCode">New code</button></div>
+    <div class="hint" style="margin:4px 0 0">${open ? 'Anyone who has the code can join and add things.' : 'Only an admin can add people. People already on it can still sign in on a new phone with the code and their PIN.'}</div>
+    <div class="codebox" style="margin-top:10px"><b>${esc(c.code || '')}</b><button class="pill" id="adminNewCode">New code</button></div>
     <div class="hint" style="margin:6px 0 0">A new code stops the old one from working. Phones already signed in stay signed in.</div>
-    <div class="btns"><button class="btn" data-settings>Back to settings</button></div>`);
+    <div class="lbl">Calendar</div>
+    <div class="newlink"><input class="field" id="calName" maxlength="40" value="${esc(c.name)}"><button class="btn" data-calrename>Rename</button></div>
+    <div class="emojis" style="margin-top:8px">${CAL_EMOJI.map(x => `<button class="${x === c.emoji ? 'on' : ''}" data-calemoji="${x}">${x}</button>`).join('')}</div>
+    <div class="colors">${CAL_COLORS.map(x => `<button class="${x === c.color ? 'on' : ''}" style="--c:${x}" data-calbase="${x}"></button>`).join('')}</div>
+    <div class="hint" style="margin:4px 2px 0">This is everyone’s starting color; each person can pick their own.</div>
+    <div class="btns"><button class="btn" data-calsheet="${id}">Back</button><button class="btn danger" data-caldelete>Delete calendar</button></div>`);
   $('#sheet').dataset.panel = 'admin'; $('#sheet').scrollTop = keep;
+}
+function openAddOther(){
+  if(!adminOpen()) return openAdminGate();
+  const id = ADMIN.cal, here = new Set(calPeople(id, true).filter(m => !m._cm.removed_at).map(m => m.id));
+  const others = (S.allMembers || []).filter(m => !here.has(m.id) && S.cm.some(r => r.member_id === m.id && !r.removed_at && r.family_id !== id));
+  openSheet(`<h3 class="sheeth">＋ Add to ${esc(calName(id))}</h3><p class="hint" style="margin:4px 2px 10px">People from your other calendars. They’ll see ${esc(calName(id))} right away.</p>
+    ${others.map(m => `<div class="mrow">${avatar(m)}<b style="flex:1">${esc(m.name)}</b><button class="pill" data-addex="${m.id}" data-role="viewer">👀 Viewer</button><button class="pill on" data-addex="${m.id}" data-role="contributor">✏️ Adds</button></div>`).join('') || '<div class="hint">Nobody else to add.</div>'}
+    <div class="btns"><button class="btn" data-adminback>Back</button></div>`);
+  $('#sheet').dataset.panel = 'addother';
 }
 document.addEventListener('click', e => {
   const t = e.target.closest && e.target.closest('[data-feature]'); if(!t) return;
-  setFeatured(t.dataset.feature, !isFeatured(S.events.find(x => x.id === t.dataset.feature)));
+  setFeatured(t.dataset.feature, !isFeatured(S.evAll.find(x => x.id === t.dataset.feature)));
 });
 document.addEventListener('click', e => {
-  const t = e.target.closest && e.target.closest('[data-settings],[data-admin],[data-adminpick],[data-adminunlock],[data-adminlock],[data-setadmin],[data-rmmember],[data-restore],#adminNewCode'); if(!t) return;
-  const d = t.dataset;
+  const t = e.target.closest && e.target.closest('[data-settings],[data-admin],[data-adminpick],[data-adminunlock],[data-adminlock],[data-adminback],[data-setadmin],[data-setrole],[data-rmmember],[data-restore],[data-addother],[data-addex],[data-newlink],[data-linkshare],[data-calrename],[data-calemoji],[data-calbase],[data-caldelete],#adminNewCode'); if(!t) return;
+  const d = t.dataset, cm = id => cmRow(ADMIN.cal, id) || {};
   if(d.settings !== undefined) openSettings();
-  else if(d.admin !== undefined) openAdminGate();
+  else if(d.admin !== undefined) openAdminGate('', d.admin || S.calOpen);
   else if(d.adminpick){ const v = $('#adminPin')?.value || ''; ADMIN.pick = d.adminpick; openAdminGate(); $('#adminPin').value = v; }
   else if(d.adminunlock !== undefined) adminUnlock(t);
-  else if(d.adminlock !== undefined){ adminLock(); openSettings(); }
-  else if(d.setadmin){ const m = member(d.setadmin), on = !isAdmin(m);
+  else if(d.adminlock !== undefined){ const c = ADMIN.cal; adminLock(); openCalSheet(c); }
+  else if(d.adminback !== undefined) openAdmin();
+  else if(d.setadmin){ const m = member(d.setadmin), on = !cm(m.id).is_admin;
     if(on || confirm(`Remove admin from ${m.name}?`)) adminDo(a => B.setAdmin(m.id, on, a), on ? `⭐ ${firstName(m.name)} is an admin` : `${firstName(m.name)} is no longer an admin`); }
+  else if(d.setrole){ const m = member(d.setrole), toViewer = cm(m.id).role !== 'viewer';
+    adminDo(a => B.setRole(m.id, toViewer ? 'viewer' : 'contributor', a), toViewer ? `👀 ${firstName(m.name)} can view only` : `✏️ ${firstName(m.name)} can add things`); }
   else if(d.rmmember){ const m = member(d.rmmember);
-    if(confirm(`Remove ${m.name}'s access?\n\nThey'll be signed out on every device and can't see the calendar. Events they made stay. You can give access again later.`))
+    if(confirm(`Take ${m.name} off ${calName(ADMIN.cal)}?\n\nThey won't see it anymore. Things they added stay. You can give access again later.`))
       adminDo(a => B.removeMember(m.id, a), `${m.emoji} ${firstName(m.name)} removed`); }
   else if(d.restore){ const m = member(d.restore);
-    const pin = (prompt(`New 4–6 digit PIN for ${m.name}. They'll use it with the family code to sign in.`) || '').trim(); if(!pin) return;
-    if(!/^[0-9]{4,6}$/.test(pin)) return toast('⚠️ PIN must be 4–6 digits');
-    adminDo(a => B.restoreMember(m.id, pin, a), `${m.emoji} ${firstName(m.name)} can sign in again`); }
+    const pin = (prompt(`Give ${m.name} access to ${calName(ADMIN.cal)} again.\n\nOptional: a new 4–6 digit PIN (leave empty to keep theirs).`) ?? null); if(pin === null) return;
+    if(pin.trim() && !/^[0-9]{4,6}$/.test(pin.trim())) return toast('⚠️ PIN must be 4–6 digits');
+    adminDo(a => B.restoreMember(m.id, pin.trim(), a), `${m.emoji} ${firstName(m.name)} is back`); }
+  else if(d.addother !== undefined) openAddOther();
+  else if(d.addex){ const m = member(d.addex); adminDo(a => B.addExisting(m.id, d.role, a), `${m.emoji} ${firstName(m.name)} added${d.role === 'viewer' ? ' as a viewer' : ''}`); }
+  else if(d.newlink !== undefined){ const label = ($('#nlLabel').value || '').trim(), days = +$('#nlDays').value;
+    adminDo(async a => { const tok = await B.createLink(label, days, a); S.links = null; return tok; }, '👀 Viewer link ready', tok => { openAdmin(); shareLink(tok, label); }); }
+  else if(d.linkshare) shareLink(d.linkshare);
+  else if(d.calrename !== undefined){ const name = ($('#calName').value || '').trim(); if(!name) return;
+    adminDo(a => B.updateCal({ name, emoji:cal(ADMIN.cal).emoji, color:cal(ADMIN.cal).color }, a), '✏️ Renamed'); }
+  else if(d.calemoji) adminDo(a => B.updateCal({ name:cal(ADMIN.cal).name, emoji:d.calemoji, color:cal(ADMIN.cal).color }, a));
+  else if(d.calbase) adminDo(a => B.updateCal({ name:cal(ADMIN.cal).name, emoji:cal(ADMIN.cal).emoji, color:d.calbase }, a));
+  else if(d.caldelete !== undefined){ const c = cal(ADMIN.cal);
+    const typed = prompt(`Delete “${c.name}” for everyone? Every event, list and photo on it goes away. This can’t be undone.\n\nType the calendar's name to confirm:`);
+    if(typed === null) return; if(typed.trim().toLowerCase() !== c.name.trim().toLowerCase()) return toast('Name didn’t match — nothing deleted');
+    adminDo(a => B.deleteCal(a), `🗑️ ${c.name} deleted`, () => { adminLock(true); openSettings(); }); }
   else if(t.id === 'adminNewCode'){ if(confirm('Make a new invite code? The current code will stop working.')) adminDo(a => B.newCode(a), '🔑 New code ready'); }
 });
-document.addEventListener('change', e => { if(e.target.id === 'adminJoin'){ const on = e.target.checked; adminDo(a => B.setAllowJoin(on, a), on ? 'New people can join with the code' : 'Only admins can add people now'); } });
+function shareLink(tok, label){
+  const c = cal(ADMIN.cal || S.calOpen) || {}, url = linkUrl(tok);
+  const text = `${label ? label + ', here' : 'Here'}’s a link to see our “${c.name}” calendar 📅 (view only)`;
+  if(navigator.share) navigator.share({ title:c.name, text, url }).catch(()=>{});
+  else navigator.clipboard?.writeText(text + ' ' + url).then(() => toast('📋 Link copied'), () => toast(url));
+}
+document.addEventListener('change', e => {
+  if(e.target.id === 'adminJoin'){ const on = e.target.checked; adminDo(a => B.setAllowJoin(on, a), on ? 'New people can join with the code' : 'Only admins can add people now'); }
+  if(e.target.dataset && e.target.dataset.linkon){ const on = e.target.checked, id = e.target.dataset.linkon;
+    adminDo(async a => { await B.setLink(id, on, a); S.links = null; }, on ? '👀 Link is on again' : '⛔ Link off — everyone who used it lost access'); }
+});
 document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id === 'adminPin'){ e.preventDefault(); const b = document.querySelector('[data-adminunlock]'); b && b.click(); } });
 function openAddMember(){
   if(!adminOpen()) return openAdminGate();
-  const st = {emoji:'👶', color:COLORS[S.members.length % COLORS.length]};
-  const draw = () => openSheet(`<h3>Add family member</h3><p style="color:var(--muted);margin:6px 0 14px">They can be @tagged now and sign in later with the family code + this PIN.</p>
+  const st = {emoji:'👶', color:COLORS[(S.allMembers || []).length % COLORS.length]};
+  const draw = () => openSheet(`<h3>Add someone to ${esc(calName(ADMIN.cal))}</h3><p style="color:var(--muted);margin:6px 0 14px">For someone without a phone yet. They can be @tagged now and sign in later with the calendar code + this PIN.</p>
     <input class="field" id="kName" placeholder="Name">
     ${avatarPicker(st.emoji, 'k')}
     <div class="colors">${COLORS.map(c => `<button class="${c===st.color?'on':''}" style="--c:${c}" data-kcolor="${c}"></button>`).join('')}</div>
     ${B.mode==='demo' ? '' : '<input class="field" id="kPin" inputmode="numeric" maxlength="6" placeholder="4-digit PIN for them">'}
-    <div class="btns"><button class="btn primary" id="kSave">Add</button></div>`);
+    <div class="btns"><button class="btn" data-adminback>Back</button><button class="btn primary" id="kSave">Add</button></div>`);
   draw();
   $('#sheet').onclick = async e => {
     const t = e.target.closest('button'); if(!t) return;
+    if(t.dataset.adminback !== undefined){ $('#sheet').onclick = null; return; }
     if(t.dataset.kemoji){ st.emoji = t.dataset.kemoji; const n = $('#kName').value; draw(); $('#kName').value = n; }
     if(t.dataset.ktone){ st.emoji = withTone(st.emoji, setPickTone(t.dataset.ktone)); const n = $('#kName').value; draw(); $('#kName').value = n; }
     if(t.dataset.kcolor){ st.color = t.dataset.kcolor; const n = $('#kName').value; draw(); $('#kName').value = n; }
     if(t.id === 'kSave'){
       const name = $('#kName').value.trim(); if(!name) return $('#kName').focus();
       if(!adminOpen()){ $('#sheet').onclick = null; return openAdminGate('Locked after a few minutes. Enter the PIN again.'); }
-      try{ await B.addMember({name, emoji:st.emoji, color:st.color, pin:$('#kPin')?.value || '0000'}, { id:ADMIN.id, pin:ADMIN.pin }); ADMIN.until = Date.now() + ADMIN_MS;
+      try{ await B.addMember({name, emoji:st.emoji, color:st.color, pin:$('#kPin')?.value || '0000'}, adminCred()); ADMIN.until = Date.now() + ADMIN_MS;
         $('#sheet').onclick = null; await refresh(); toast(`${st.emoji} ${name} added`); openAdmin(); }
       catch(err){ if(err.pin){ $('#sheet').onclick = null; adminLock(true); return openAdminGate(err.message); } toast('⚠️ ' + err.message); }
     }
@@ -2589,7 +2912,7 @@ function openAddMember(){
 }
 
 /* ========================= Onboarding (Supabase mode) ========================= */
-const OB = { code:'', fam:null, pick:null, emoji:'🧔', color:COLORS[0] };
+const OB = { code:'', fam:null, pick:null, emoji:'🧔', color:COLORS[0], token:'', view:null };
 function ob(step, err=''){
   const el = $('#onboard'); el.classList.remove('hidden');
   const who = () => `${avatarPicker(OB.emoji, 'ob')}
@@ -2615,6 +2938,10 @@ function ob(step, err=''){
     h = `<button class="back" data-ob="pick">‹ Back</button><div style="text-align:center;margin-top:20px">${avatar(m,'lg')}</div><h1>Hi ${esc(m.name)}!</h1><p class="c">Enter your PIN</p>
     <input class="field code" id="obPin" inputmode="numeric" maxlength="6" autocomplete="off"><div class="err">${esc(err)}</div>
     <button class="btn primary" style="width:100%" data-ob="doClaim">Sign in</button>`; }
+  if(step === 'view') h = `<div class="logo">${esc(OB.view?.emoji || '👀')}</div><h1>${esc(OB.view?.name || 'A calendar')}</h1>
+    <p class="c">${OB.view?.ok === false ? 'This link has been turned off or has expired. Ask whoever sent it for a new one.' : 'You’ve been invited to see this calendar (view only).'}</p>
+    ${OB.view?.ok === false ? '' : `<input class="field" id="obName" placeholder="Your name (so they know who’s looking)">
+    <div class="err">${esc(err)}</div><button class="btn primary" style="width:100%" data-ob="doView">See the calendar</button>`}`;
   if(step === 'new') h = `<button class="back" data-ob="pick">‹ Back</button><h1>Join ${esc(OB.fam.name)}</h1><p class="c">Set up your avatar.</p>
     <input class="field" id="obName" placeholder="Your name">${who()}
     <input class="field" id="obPin" inputmode="numeric" maxlength="6" placeholder="Pick a 4-digit PIN"><div class="err">${esc(err)}</div>
@@ -2635,6 +2962,7 @@ async function obAction(t){
     if(a === 'doCode'){ OB.code = v('obCode').toUpperCase(); const f = await B.preview(OB.code); if(!f) return ob('code', 'Code not found'); OB.fam = f; return ob(f.members.length ? 'pick' : 'new'); }
     if(a === 'doClaim'){ await B.claim(OB.code, OB.pick, v('obPin')); return finishOnboard(); }
     if(a === 'doJoin'){ await B.join({code:OB.code, name:v('obName'), emoji:OB.emoji, color:OB.color, pin:v('obPin')}); return finishOnboard(); }
+    if(a === 'doView'){ if(!v('obName')) return ob('view', 'Add your name'); await B.redeemLink(OB.token, { name:v('obName'), emoji:'👀' }); return finishOnboard(); }
     ob(a);
   }catch(e){ ob(step, e.message); }
   finally{ t.disabled = false; }
@@ -2644,10 +2972,11 @@ async function finishOnboard(isNew){
   history.replaceState(null, '', location.pathname);
   await refresh(); B.subscribe(liveRefresh);
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  if(isNew && tz) B.updateFamily({tz}).catch(()=>{});
+  if(tz) S.cals.filter(c => !c.tz && c.role === 'contributor').forEach(c => B.updateCalendar(c.id, {tz}).catch(()=>{}));
   pushInit();
   if(isNew) setTimeout(openMe, 400);
   toast(`👋 Welcome, ${firstName(S.me.name)}!`);
+  ssInit(false); wxInit();
 }
 
 /* ========================= Events ========================= */
@@ -2706,13 +3035,6 @@ document.addEventListener('click', e => {
   if(d.mecolor){ act(() => B.updateMe({color:d.mecolor}), () => { S.me.color = d.mecolor; }).then(openMe); return; }
   if(d.stop !== undefined) return;
   if(d.open){ openDetail(d.open, false, d.occ); return; }
-  if(t.id === 'shareCode'){
-    const url = location.origin + location.pathname + '?code=' + S.family.code;
-    const text = `Join our family calendar 📅 Code: ${S.family.code}`;
-    if(navigator.share) navigator.share({title:'Family Calendar', text, url}).catch(()=>{});
-    else navigator.clipboard?.writeText(text + ' ' + url).then(() => toast('📋 Copied'));
-    return;
-  }
   if(t.id === 'addKid'){ openAddMember(); return; }
   if(d.cdtoggle){ const v = view(S.events.find(e => e.id === d.cdtoggle)); const on = !v.countdown;
     act(() => B.saveEvent({...v, countdown:on}), () => { S.events.find(e => e.id === d.cdtoggle).countdown = on; });
@@ -2746,6 +3068,11 @@ $('#nsEmoji').addEventListener('input', nsUpdate);
 $('#nsEmoji').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('#nsWords').focus(); } });
 $('#nsWords').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); saveCustomSticker(); } });
 $('#composer').addEventListener('change', e => {
+  if(C && e.target.id === 'cCal'){                         // picked from the menu: drop a typed +Calendar so the two don't disagree
+    C.mCal = e.target.value; const t = $('#cText');
+    if(parseQuick(t.value, {noDateTime:true}).cal) t.value = t.value.replace(/(^|\s)\+[A-Za-z][\w'’-]*/g, '$1').replace(/\s{2,}/g, ' ').trim();
+    try{ localStorage.setItem('famcal-lastcal', C.mCal); }catch(err){}
+    updateComposer(); return; }
   if(C && e.target.id === 'cRepeat'){ const v = e.target.value, d = draft();
     C.mRep = v === 'none' ? null : { repeat:v, days: (v === 'weekly' || v === 'biweekly') ? (d.rep && d.rep.repeat === v && d.rep.days ? d.rep.days : [dowOf(d.date)]) : null, until: d.rep ? d.rep.until || null : null };
     if(C.mDate === undefined && d.date) C.mDate = d.date;          // keep the day it's on
@@ -2957,8 +3284,10 @@ async function ssPrune(){
    Any family phone or computer adds photos; every wall display in the family downloads them once into
    this device's photo store (IndexedDB) and plays them from there, so frames use almost no data and keep
    working offline. Videos stay on the device they were added on. */
-const sharedPhotos = () => !!B?.addPhoto && !S.mediaMissing;
-const photoCap = () => +(S.family?.photo_cap) || 300;
+const sharedPhotos = () => !!B?.addPhoto && !S.mediaMissing && S.cals.length > 0;
+const photoCap = calId => +(cal(calId || dispCal())?.photo_cap) || 300;
+const album = calId => S.media.filter(r => r.family_id === calId);
+function photoCalDefault(){ const c = S.photoCal; if(cal(c)) return c; if(ssCfg().display) return dispCal(); return defaultCal() || S.cals[0]?.id; }
 async function sha256Hex(blob){ const h = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''); }
 async function frameJpeg(file){              // ~1280px on the long side, under 1 MB (the bucket's limit)
   const bmp = await decodeImage(file);
@@ -2981,22 +3310,24 @@ async function photosAdd(files){
   const imgs = files.filter(isImageFile), vids = files.filter(f => !isImageFile(f));
   if(vids.length) await ssAddFiles(vids);                         // videos stay on this device
   if(!imgs.length) return;
+  const calId = photoCalDefault();
+  if(!canWrite(calId)) return toast(`👀 You can view ${calName(calId)}’s photos but not add to them`);
   let added = 0, dup = 0, bad = 0, stopped = '', lastErr = '';
-  const known = new Set(S.media.map(m => m.sha256)), cacheHere = ssOn();
+  const known = new Set(album(calId).map(m => m.sha256)), cacheHere = ssOn() && calId === dispCal();
   for(const [i, f] of imgs.entries()){
-    if(S.media.length + added >= photoCap()){ stopped = `Your family has reached ${photoCap()} shared photos. Remove some to add more.`; break; }
+    if(album(calId).length + added >= photoCap(calId)){ stopped = `${calName(calId)} has reached ${photoCap(calId)} shared photos. Remove some to add more.`; break; }
     toast(`${isHeic(f) ? 'Converting' : 'Uploading'} ${i + 1} of ${imgs.length}…`);
     try{
       const sha = await sha256Hex(f);                               // hash of the original file: the same photo is never stored twice
       if(known.has(sha)){ dup++; continue; }
       const j = await frameJpeg(f), id = uid();
-      await B.addPhoto({ id, blob:j.blob, sha256:sha, width:j.width, height:j.height });
+      await B.addPhoto({ id, cal:calId, blob:j.blob, sha256:sha, width:j.width, height:j.height });
       known.add(sha); added++;
       if(cacheHere) await SSDB.put({ id:'sh:' + id, mid:id, type:'image', blob:j.blob, name:f.name, shared:true, added:Date.now() });
     }catch(e){ const r = photoErr(e); if(r.dup){ dup++; continue; } if(r.stop){ stopped = r.msg; break; } bad++; lastErr = r.msg || ''; console.warn('photo upload', e); }
   }
   await refresh().catch(()=>{}); await ssLoad();
-  const parts = [added ? `✓ Shared ${added} photo${added === 1 ? '' : 's'} with the family` : '', dup ? `${dup} already shared` : '', bad ? `${bad} couldn’t upload${/HEIC/i.test(lastErr) ? ` (${lastErr})` : ''}` : ''].filter(Boolean);
+  const parts = [added ? `✓ Added ${added} photo${added === 1 ? '' : 's'} to ${calName(calId)}` : '', dup ? `${dup} already shared` : '', bad ? `${bad} couldn’t upload${/HEIC/i.test(lastErr) ? ` (${lastErr})` : ''}` : ''].filter(Boolean);
   toast(stopped ? (added ? `✓ Shared ${added}. ` : '') + stopped : parts.join(' · ') || 'Nothing new to add');
   if($('#sheet').dataset.panel === 'photos') openPhotos(); else reopenSettings();
 }
@@ -3008,11 +3339,11 @@ async function photoSync(){                  // make this display's photo store 
   if(PSYNC.busy){ PSYNC.again = true; return; }
   PSYNC.busy = true;
   try{
-    const local = await SSDB.all(), want = new Set(S.media.map(r => r.id));
+    const mine = album(dispCal()), local = await SSDB.all(), want = new Set(mine.map(r => r.id));     // this screen plays one calendar's album
     let changed = false;
     for(const m of local) if(m.mid && !want.has(m.mid)){ await SSDB.del(m.id); changed = true; }      // removed by someone in the family
     const have = new Set(local.filter(m => m.mid).map(m => m.mid));
-    const missing = S.media.filter(r => !have.has(r.id));
+    const missing = mine.filter(r => !have.has(r.id));
     for(let i = 0; i < missing.length; i += 20){
       const batch = missing.slice(i, i + 20), links = await B.photoLinks(batch.map(r => r.path));
       await Promise.all(batch.map(async r => {
@@ -3027,8 +3358,9 @@ async function photoSync(){                  // make this display's photo store 
 }
 setInterval(() => { if(document.visibilityState === 'visible') photoSync(); }, 30 * 60000);   // safety net if a live update was missed
 
-async function openPhotos(){                 // see and remove the family's shared photos
-  const rows = [...S.media].reverse(), cached = new Map(SS.media.filter(m => m.mid).map(m => [m.mid, m]));
+async function openPhotos(calId){            // see a calendar's album; add and remove if you can add to that calendar
+  calId = calId || photoCalDefault(); S.photoCal = calId;
+  const rw = canWrite(calId), rows = [...album(calId)].reverse(), cached = new Map(SS.media.filter(m => m.mid).map(m => [m.mid, m]));
   const urls = {}; const blobs = [];
   rows.forEach(r => { const c = cached.get(r.id); if(c && c.blob){ const u = URL.createObjectURL(c.blob); urls[r.id] = u; blobs.push(u); } });
   const need = rows.filter(r => !urls[r.id]);
@@ -3036,13 +3368,15 @@ async function openPhotos(){                 // see and remove the family's shar
   ($('#sheet').dataset.blobs || '').split(' ').filter(Boolean).forEach(u => URL.revokeObjectURL(u));   // coming back from one photo
   PHOTO_URLS = urls;
   const here = ssOn() ? SS.media.filter(m => m.mid).length : null;
-  openSheet(`<h3 class="sheeth">🖼️ Family photos</h3><p style="color:var(--muted);margin:6px 0 12px"><b>${S.media.length} of ${photoCap()}</b> · every shared display in the family plays these${here !== null ? ` · ${here} saved on this screen` : ''}. Tap a photo to add a caption or memory.</p>
+  openSheet(`<h3 class="sheeth">🖼️ Photos</h3>
+    ${multiCal() ? `<div class="albums">${S.cals.map(c => `<button class="pill ${c.id === calId ? 'on' : ''}" style="--c:${esc(calColor(c.id))}" data-album="${c.id}">${esc(c.emoji || '📅')} ${esc(c.name)} <small>${album(c.id).length}</small></button>`).join('')}</div>` : ''}
+    <p style="color:var(--muted);margin:6px 0 12px"><b>${rows.length} of ${photoCap(calId)}</b> · wall displays showing ${esc(calName(calId))} play these${here !== null && calId === dispCal() ? ` · ${here} saved on this screen` : ''}.${rw ? ' Tap a photo to add a caption or memory.' : ' 👀 View only.'}</p>
     <input type="file" id="ssShared2" accept="image/*,.heic,.heif" multiple class="hidden">
-    <div class="btns" style="margin:0 0 12px"><button class="btn primary" data-photoadd>＋ Add photos</button></div>
+    ${rw ? '<div class="btns" style="margin:0 0 12px"><button class="btn primary" data-photoadd>＋ Add photos</button></div>' : ''}
     ${rows.length ? `<div class="pgrid">${rows.map(r => { const m = member(r.uploaded_by);
       const n = photoComments(r.id).length;
       return `<div class="pcell" data-photo="${r.id}">${urls[r.id] ? `<img src="${esc(urls[r.id])}" alt="" loading="lazy">` : '<span class="pmiss">🖼️</span>'}
-        ${m ? `<span class="pby">${avatar(m, 'sm')}</span>` : ''}${n ? `<span class="pcn">💬 ${n}</span>` : ''}<button class="pdel" data-delphoto="${r.id}" aria-label="Remove photo">✕</button></div>`; }).join('')}</div>`
+        ${m ? `<span class="pby">${avatar(m, 'sm')}</span>` : ''}${n ? `<span class="pcn">💬 ${n}</span>` : ''}${rw ? `<button class="pdel" data-delphoto="${r.id}" aria-label="Remove photo">✕</button>` : ''}</div>`; }).join('')}</div>`
       : '<div class="empty"><span class="big">🖼️</span>No shared photos yet.</div>'}`);
   $('#sheet').dataset.panel = 'photos';
   $('#sheet').dataset.blobs = blobs.join(' ');
@@ -3070,8 +3404,8 @@ async function openPhoto(id, keepTyping){
       return `<div class="pcm">${avatar(a, 'sm')}<div class="pcb"><b>${esc(firstName(a.name))}</b> ${esc(c.body)}<small>${esc(when(c.created_at))}</small></div>
         ${c.author_id === S.me.id ? `<button class="pcx" data-delcomment="${c.id}" aria-label="Delete comment">✕</button>` : ''}</div>`; }).join('')
       : '<div class="hint" style="margin:2px 2px 10px">No comments yet. Write a caption or a memory — the family frames show it with this photo.</div>'}
-    <div class="pcadd"><input class="field" id="pcText" maxlength="140" placeholder="Add a caption or memory…" autocomplete="off" enterkeyhint="send" value="${esc(draft)}">
-      <button class="btn primary" data-postcomment="${id}">Post</button></div>`);
+    ${canWrite(r.family_id) ? `<div class="pcadd"><input class="field" id="pcText" maxlength="140" placeholder="Add a caption or memory…" autocomplete="off" enterkeyhint="send" value="${esc(draft)}">
+      <button class="btn primary" data-postcomment="${id}">Post</button></div>` : ''}`);
   $('#sheet').dataset.panel = 'photo';
   if(keepTyping) setTimeout(() => $('#pcText')?.focus(), 50);
 }
@@ -3099,6 +3433,9 @@ async function deletePhoto(id){
 }
 
 /* ---------- Settings (lives in the "Me" sheet) ---------- */
+// The wall display shows exactly one calendar (and that calendar's photo album)
+function dispCal(){ const id = ssCfg().cal; return cal(id) ? id : (defaultCal() || S.cals[0]?.id || null); }
+const dispEvents = () => (S.evAll || []).filter(e => e.family_id === dispCal());
 function ssSection(){
   const c = ssCfg(), own = SS.media.filter(m => !m.mid), vids = own.filter(m => m.type === 'video').length, pics = own.length - vids;
   const shared = sharedPhotos();
@@ -3117,6 +3454,8 @@ function ssSection(){
     ${chk('display', 'This device is a shared display')}
     <div class="hint" style="margin:4px 0 0">${c.display ? 'Settings below apply to this screen only.' : 'Turn on for a kitchen tablet or wall screen the whole family uses. Leave it off on personal phones.'}</div>
     ${c.display ? `<div class="ssub">
+      ${S.cals.length > 1 ? `<label class="ssrow"><span>Calendar on this screen</span><select data-ss-dcal>${S.cals.map(x => `<option value="${x.id}" ${x.id === dispCal() ? 'selected' : ''}>${esc(x.emoji || '📅')} ${esc(x.name)}</option>`).join('')}</select></label>
+      <div class="hint" style="margin:4px 0 6px">The screen shows this calendar’s plans and plays its photo album.</div>` : ''}
       ${chk('enabled', 'Screensaver')}
       ${c.enabled ? `<div class="hint" style="margin:4px 0 0">When the screen sits idle, today’s plan slides to the left and photos play on the right.</div>
       <label class="ssrow"><span>Start after</span>${sel('idle', [1,2,5,10,30], 'min')}</label>
@@ -3138,15 +3477,17 @@ document.addEventListener('change', e => {
   else if(t.dataset && t.dataset.ssToggle === 'display') ssDisplay(t.checked);
   else if(t.dataset && t.dataset.ssToggle === 'enabled'){ ssSave({ enabled:t.checked }); if(!t.checked && SS.on) ssStop(); reopenSettings(); }
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
+  else if(t.dataset && t.dataset.ssDcal !== undefined){ ssSave({ cal:t.value }); toast(`🖼️ This screen shows ${calName(t.value)}`); photoSync(); if(SS.on) ssPanelRender(); reopenSettings(); }
   else if(t.dataset && t.dataset.ssSet){ ssSave({ [t.dataset.ssSet]: t.dataset.ssSet === 'style' ? t.value : +t.value }); if(t.dataset.ssSet === 'style') reopenSettings(); }
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
   else if((t.id === 'ssShared' || t.id === 'ssShared2') && t.files.length){ const fs = [...t.files]; t.value = ''; photosAdd(fs); }
 });
 document.addEventListener('click', e => {
+  const al = e.target.closest && e.target.closest('[data-album]'); if(al){ openPhotos(al.dataset.album); return; }
   const pb = e.target.closest && e.target.closest('[data-photoadd],[data-photos],[data-delphoto]');
   if(pb){
     if(pb.dataset.photoadd !== undefined) ($('#ssShared2') || $('#ssShared')).click();
-    else if(pb.dataset.photos !== undefined) openPhotos();
+    else if(pb.dataset.photos !== undefined) openPhotos(S.photoCal);
     else deletePhoto(pb.dataset.delphoto);
     return;
   }
@@ -3170,7 +3511,7 @@ function ssRow(e, mode, nowHM){
   if(mode === 'today' && st){ const [h,m] = st.split(':').map(Number); past = (hhmm(e.end_time) || pad(Math.min(23, h + 1)) + ':' + pad(m)) < nowHM; }
   const time = e.start_time ? fmtTime(e.start_time) : 'All day';
   const t = mode === 'today' ? esc(time) : `${esc(parseYmd(e.starts_on).toLocaleDateString(undefined, { weekday:'short', day:'numeric' }))}<small>${esc(time)}</small>`;
-  return `<div class="ssr ${past ? 'past' : ''}" style="--c:${esc(o.color)}"><span class="t">${t}</span>
+  return `<div class="ssr ${past ? 'past' : ''}" style="--c:${esc(evColor(e))}"><span class="t">${t}</span>
     <span class="m"><b>${esc(title)}</b>${!sec && v.place ? `<small>📍 ${esc(v.place)}</small>` : ''}</span>
     <span class="who">${ids.slice(0,3).map(id => avatar(member(id), 'sm')).join('')}</span></div>`;
 }
@@ -3178,10 +3519,11 @@ function ssPanelRender(){
   const box = $('#ssPanelIn'); if(!box || !S.me) return;
   const now = new Date(), t = todayStr(), nowHM = pad(now.getHours()) + ':' + pad(now.getMinutes());
   const tm = now.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' }), mm = tm.match(/^(.*?)\s*([AP]M)$/i);
-  const evs = d => eventsOn(d).filter(e => e.kind !== 'list').sort(sortEv);
-  const cds = countdowns().filter(e => !isSecret(e)).slice(0, 3);
-  const feat = featuredList();
-  const lists = S.events.filter(e => e.kind === 'list' && !e.starts_on && !isSecret(e) && e !== feat).slice(0, 4);
+  const src = dispEvents();                               // just the calendar this screen shows
+  const evs = d => eventsOn(d, src).filter(e => e.kind !== 'list').sort(sortEv);
+  const cds = src.filter(e => hasCountdown(e) && !isSecret(e)).map(view).sort((a, b) => a.starts_on.localeCompare(b.starts_on)).slice(0, 3);
+  const feat = featuredList(dispCal());
+  const lists = src.filter(e => e.kind === 'list' && !e.starts_on && !isSecret(e) && e !== feat).slice(0, 4);
   const later = []; for(let i = 2; i <= 8 && later.length < 5; i++) evs(addDays(t, i)).forEach(e => later.length < 5 && later.push(e));
   const today = evs(t), tomorrow = evs(addDays(t, 1));
   box.innerHTML = `
@@ -3191,8 +3533,8 @@ function ssPanelRender(){
       const days = [1, 2, 3, 4, 5].map(i => [addDays(t, i), wxDay(addDays(t, i))]).filter(x => x[1]);
       return `<div class="sswx"><span class="sswn">${wxIcon(n.code, n.night)} <b>${deg(n.t)}</b></span><span class="sswt">${esc(wxWord(n.code))}<br>H ${deg(d0.hi)} · L ${deg(d0.lo)}${d0.pop >= 30 ? ` · 💧${d0.pop}%` : ''}</span></div>
         <div class="sswd">${days.map(([d, x]) => `<span><small>${esc(new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday:'short' }))}</small>${wxIcon(x.code)}<b>${deg(x.hi)}</b><small>${deg(x.lo)}</small></span>`).join('')}</div>`; })()}
-    ${cds.length ? `<div class="sscds">${cds.map(e => { const n = daysUntil(e.starts_on), o = member(e.owner_id) || { color:'#ff6b4a' };
-      return `<span class="sscd" style="--c:${esc(o.color)}">${esc(view(e).sticker || '⏳')} <b>${n === 0 ? 'Today!' : n + 'd'}</b> <span>${esc(view(e).title)}</span></span>`; }).join('')}</div>` : ''}
+    ${cds.length ? `<div class="sscds">${cds.map(e => { const n = daysUntil(e.starts_on);
+      return `<span class="sscd" style="--c:${esc(evColor(e))}">${esc(view(e).sticker || '⏳')} <b>${n === 0 ? 'Today!' : n + 'd'}</b> <span>${esc(view(e).title)}</span></span>`; }).join('')}</div>` : ''}
     <div class="sssec">Today</div>
     ${(() => { const done = today.filter(e => isOver(e, nowHM)), rest = today.filter(e => !done.includes(e));
       return (done.length ? `<div class="ssdone">✓ ${done.length} earlier today</div>` : '')
@@ -3226,7 +3568,7 @@ function ssNext(){
   clearTimeout(SS.advT);
   const stage = $('#ssStage'); if(!SS.on || !stage) return;
   if(!SS.media.length){
-    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(S.family?.name || 'Family')}</b><span>${sharedPhotos() ? 'Add photos with the 🖼️ button' : 'Add photos in ⚙️ Settings → Shared display'}</span></div>`;
+    stage.innerHTML = `<div class="ssempty"><span class="big">🖼️</span><b>${esc(calName(dispCal()))}</b><span>${sharedPhotos() ? 'Add photos with the 🖼️ button' : 'Add photos in ⚙️ Settings → Shared display'}</span></div>`;
     return;
   }
   if(SS.fails > SS.media.length){                   // nothing would load: say why instead of showing a black screen
@@ -3365,7 +3707,7 @@ function scrapPage(stage){                             // a fresh page under the
   if(!book){ [...stage.children].forEach(ssDrop); book = document.createElement('div'); book.className = 'sbook'; stage.appendChild(book); }
   const W = stage.clientWidth, H = stage.clientHeight, now = new Date();
   const pg = document.createElement('div'); pg.className = 'sbpage ' + pickOne(['cream', 'kraft', 'grid']);
-  pg.innerHTML = `<div class="sbhead">${esc(S.family?.name || 'Our family')}<small>${esc(now.toLocaleDateString(undefined, { month:'long', year:'numeric' }))}</small></div>`;
+  pg.innerHTML = `<div class="sbhead">${esc(calName(dispCal()))}<small>${esc(now.toLocaleDateString(undefined, { month:'long', year:'numeric' }))}</small></div>`;
   const old = SB.page && SB.page.isConnected ? SB.page : null;
   book.prepend(pg);
   if(old){
@@ -3424,14 +3766,14 @@ const PC_INKS = ['#c0392b', '#1d4e89', '#2d6a4f', '#7b2cbf', '#b5651d'];
 const PC_GENERIC = ['Wish you were here! 😊', 'Having a wonderful time at home.', 'Hugs from all of us ♥', 'Thinking of you!', 'Best. Family. Ever.', 'Remember this one? 📸', 'Home is our favorite place.', 'Love you all to the moon 🌙'];
 function postcardNotes(){                              // little notes from what's on the calendar (never private things)
   const t = todayStr(), ok = e => !isSecret(e) && e.kind !== 'list', when = e => e.start_time ? ' at ' + fmtTime(e.start_time) : '';
-  const notes = [];
-  countdowns().filter(e => !isSecret(e)).slice(0, 3).forEach(e => { const v = view(e), n = daysUntil(e.starts_on);
+  const notes = [], src = dispEvents();
+  src.filter(e => hasCountdown(e) && !isSecret(e)).map(view).slice(0, 3).forEach(e => { const v = view(e), n = daysUntil(e.starts_on);
     notes.push({ text: n === 0 ? `Today’s the day — ${v.title}! 🎉` : n === 1 ? `${v.title} is tomorrow!` : `Only ${n} more days until ${v.title}!`, stamp: stickerOf(v) }); });
-  eventsOn(t).filter(ok).sort(sortEv).slice(0, 3).forEach(e => { const v = view(e);
+  eventsOn(t, src).filter(ok).sort(sortEv).slice(0, 3).forEach(e => { const v = view(e);
     notes.push({ text: `Don’t forget: ${v.title}${when(e)} today.`, stamp: stickerOf(v) }); });
-  eventsOn(addDays(t, 1)).filter(ok).sort(sortEv).slice(0, 2).forEach(e => { const v = view(e);
+  eventsOn(addDays(t, 1), src).filter(ok).sort(sortEv).slice(0, 2).forEach(e => { const v = view(e);
     notes.push({ text: `Tomorrow: ${v.title}${when(e)}.`, stamp: stickerOf(v) }); });
-  const f = featuredList();
+  const f = featuredList(dispCal());
   if(f){ const left = itemsOf(f.id).filter(i => !i.done), v = view(f);
     if(left.length) notes.push({ text: `Please pick up: ${left.slice(0, 3).map(i => i.text).join(', ')}${left.length > 3 ? ` + ${left.length - 3} more` : ''}.`, stamp: v.sticker || '🛒' }); }
   return notes;
@@ -3439,7 +3781,7 @@ function postcardNotes(){                              // little notes from what
 function postcardItem(m){
   const el = document.createElement('div'); el.className = 'pc';
   const row = m.mid && S.media.find(r => r.id === m.mid), who = row && member(row.uploaded_by);
-  const fam = S.family?.name || 'Our family';
+  const fam = calName(dispCal());
   const notes = postcardNotes().filter(n => n.text !== PC.last), said = photoNote(m);    // a family comment on the photo comes first
   const note = said ? { text: said.text, stamp: pickOne(PC_STAMPS), by: said.by }
     : notes.length && Math.random() < .75 ? pickOne(notes) : { text: pickOne(PC_GENERIC), stamp: pickOne(PC_STAMPS) };
@@ -3671,7 +4013,7 @@ function penGate(next, only){            // run `next` now if this person alread
 }
 function penPick(next, only){
   PEN.next = next;
-  const list = only ? S.members.filter(m => m.id === only) : S.members;
+  const pool = contributorsOf(dispCal()), list = only ? pool.filter(m => m.id === only) : pool;
   openSheet(`<h3>${only ? 'Edit as…' : 'Who’s holding the pen?'}</h3>
     <p style="color:var(--muted);margin:6px 0 4px">${only ? 'Only the person who made this can change it.' : 'Pick yourself so it’s saved under your name.'}</p>
     <div class="who">${list.map(m => `<button data-penpick="${m.id}">${avatar(m, 'lg')}${esc(firstName(m.name))}</button>`).join('')}</div>
@@ -3692,7 +4034,7 @@ function penPin(id, err){
 function penCancel(){ PEN.next = null; clearTimeout(PEN.pickT); closeSheet(); }
 async function penTake(id, pin){
   try{
-    if(B.mode === 'supabase') await B.claim(S.family.code, id, pin);   // the database checks the PIN
+    if(B.mode === 'supabase') await B.claim(cal(dispCal())?.code, id, pin);   // the database checks the PIN
     else await B.switchMember(id);                                      // demo mode has no PINs
     PEN.who = id; S.filter.clear(); await refresh();
   }catch(e){ return penPin(id, e.message); }
@@ -3704,7 +4046,7 @@ async function penDown(quiet){
   clearTimeout(PEN.timer); const c = ssCfg();
   try{
     if(c.homeId && S.me && S.me.id !== c.homeId){
-      if(B.mode === 'supabase') await B.claim(S.family.code, c.homeId, c.homePin); else await B.switchMember(c.homeId);
+      if(B.mode === 'supabase') await B.claim(cal(dispCal())?.code, c.homeId, c.homePin); else await B.switchMember(c.homeId);
     }
     PEN.who = null; S.filter.clear(); await refresh(); penRender(); if(!quiet) toast('✏️ Pen down');
   }catch(e){ penBump(); toast('⚠️ Couldn’t switch back: ' + e.message); }
@@ -3714,7 +4056,7 @@ async function penEnable(box){                  // turning the shared-screen set
   if(B.mode === 'supabase'){
     pin = (prompt(`Enter ${me.name}'s PIN. This screen keeps it so it can switch back after someone writes an event.`) || '').trim();
     if(!pin){ box.checked = false; return; }
-    try{ await B.claim(S.family.code, me.id, pin); }catch(e){ box.checked = false; return toast('⚠️ ' + e.message); }
+    try{ await B.claim(cal(dispCal())?.code, me.id, pin); }catch(e){ box.checked = false; return toast('⚠️ ' + e.message); }
   }
   ssSave({ shared:true, homeId:me.id, homePin:pin }); toast('✏️ Ask who’s writing is on'); reopenSettings();
 }
@@ -3740,6 +4082,13 @@ document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id 
   if(!configured) $('#demoBanner').classList.remove('hidden');
   try{
     const me = await B.start();
+    const q0 = new URLSearchParams(location.search), viewTok = q0.get('view');
+    if(viewTok && B.mode === 'supabase'){                 // a read-only link (e.g. Grandma)
+      OB.token = viewTok;
+      if(!me){ try{ OB.view = await B.linkPreview(viewTok); }catch(e){} return ob('view'); }
+      try{ await B.redeemLink(viewTok); history.replaceState(null, '', location.pathname); setTimeout(() => toast(`👀 You can now see ${S.cals.find(c => c.id === OB.joined)?.name || 'that calendar'}`), 600); }
+      catch(e){ setTimeout(() => toast('⚠️ ' + e.message), 600); history.replaceState(null, '', location.pathname); }
+    }
     if(!me){
       const code = new URLSearchParams(location.search).get('code');
       if(code){ OB.code = code.toUpperCase(); try{ const f = await B.preview(OB.code); if(f){ OB.fam = f; return ob('pick'); } }catch(e){} return ob('code'); }
@@ -3751,9 +4100,11 @@ document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.id 
     if(q.get('tab') === 'lists') setTab('lists');
     if(q.has('add')) openComposer();
     if(q.get('open')) openFromLink(q.get('open'));
-    if(q.has('tab') || q.has('add') || q.has('open')) history.replaceState(null, '', location.pathname);
+    if(q.get('code')){ const code = q.get('code').toUpperCase();          // already signed in: offer to join that calendar
+      if(!S.cals.some(c => c.code === code)){ S.joinCode = code; setTimeout(openJoinCal, 300); } }
+    if(q.has('tab') || q.has('add') || q.has('open') || q.has('code')) history.replaceState(null, '', location.pathname);
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if(B.mode === 'supabase' && S.family && !S.family.tz && tz) B.updateFamily({tz}).catch(()=>{});
+    if(B.mode === 'supabase' && tz) S.cals.filter(c => !c.tz && c.role === 'contributor').forEach(c => B.updateCalendar(c.id, {tz}).catch(()=>{}));
     pushInit();
     ssInit(q.get('display') === '1');
     wxInit();
