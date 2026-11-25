@@ -3268,6 +3268,7 @@ function ssCfg(){
   if(!SS.cfg){ let c = {}; try{ c = JSON.parse(localStorage.getItem('famcal-ss') || '{}'); }catch(e){}
     if(c.display === undefined) c.display = !!(c.enabled || c.shared);     // screens set up before the "shared display" switch existed
     if(Array.isArray(c.looks)) c.looks = [...new Set(c.looks.map(k => k === 'cartoon' ? 'burnt' : k))];   // Cartoon was replaced by Burnt edges
+    if(!['off', 'some', 'often'].includes(c.fx)) delete c.fx;            // repairs a value an earlier version saved wrong
     SS.cfg = { ...SS_DEF, ...c }; }
   return SS.cfg;
 }
@@ -3595,7 +3596,8 @@ document.addEventListener('change', e => {
   else if(t.dataset && t.dataset.ssToggle) ssSave({ [t.dataset.ssToggle]: t.checked });
   else if(t.dataset && t.dataset.ssLook){ const L = new Set(ssCfg().looks); t.checked ? L.add(t.dataset.ssLook) : L.delete(t.dataset.ssLook); ssSave({ looks:LOOKS.map(x => x[0]).filter(k => L.has(k)) }); reopenSettings(); }
   else if(t.dataset && t.dataset.ssDcal !== undefined){ setDispCal(t.dataset.ssDcal, t.checked); }
-  else if(t.dataset && t.dataset.ssSet){ ssSave({ [t.dataset.ssSet]: t.dataset.ssSet === 'style' ? t.value : +t.value }); if(t.dataset.ssSet === 'style') reopenSettings(); }
+  else if(t.dataset && t.dataset.ssSet){ const k = t.dataset.ssSet, v = t.value;            // numbers stay numbers, words stay words
+    ssSave({ [k]: /^\d+(\.\d+)?$/.test(v) ? +v : v }); if(k === 'style' || k === 'fx') reopenSettings(); }
   else if(t.id === 'ssFile' && t.files.length){ const fs = [...t.files]; t.value = ''; ssAddFiles(fs); }
   else if((t.id === 'ssShared' || t.id === 'ssShared2') && t.files.length){ const fs = [...t.files]; t.value = ''; photosAdd(fs); }
 });
